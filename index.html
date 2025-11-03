@@ -25,8 +25,62 @@
         document.documentElement.classList.remove('dark')
       }
     </script>
+    <style>
+      @media screen {
+        .print-only {
+          /* Position off-screen so chart components can render with a valid width */
+          position: absolute;
+          left: -9999px;
+          top: auto;
+          width: 210mm; 
+        }
+      }
+      @media print {
+        @page {
+          size: A4;
+          margin: 1.5cm;
+        }
+
+        body {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        
+        .screen-only {
+          display: none !important;
+        }
+
+        .print-only {
+            display: block !important;
+            position: static !important;
+            width: auto !important;
+        }
+       
+        .no-print {
+          display: none !important;
+        }
+        
+        html, body {
+          background-color: #ffffff !important;
+          color: #000000 !important;
+        }
+        
+        * {
+          box-shadow: none !important;
+          text-shadow: none !important;
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+          page-break-after: avoid;
+        }
+        
+        div, section, fieldset, dl {
+          page-break-inside: avoid;
+        }
+      }
+    </style>
 </head>
-  <body class="bg-gray-100 dark:bg-slate-950 transition-colors duration-300">
+  <body class="bg-gray-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

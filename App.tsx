@@ -5,6 +5,13 @@ import InputPanel from './components/InputPanel';
 import ResultsPanel from './components/ResultsPanel';
 import { initialInputs } from './constants';
 import ThemeToggle from './components/ThemeToggle';
+import NavBar from './components/NavBar';
+import DetailedResultsPage from './pages/DetailedResultsPage';
+import PrintButton from './components/PrintButton';
+import PrintReport from './components/PrintReport';
+import FeatureOverviewPage from './pages/FeatureOverviewPage';
+import OperatingGuidePage from './pages/OperatingGuidePage';
+import ContingencyGuidePage from './pages/ContingencyGuidePage';
 
 // Fix: Create a new type to represent form state, allowing empty strings for inputs.
 type FormInputs = { [K in keyof CalculationInputs]: CalculationInputs[K] | '' };
@@ -26,19 +33,19 @@ const validateInputs = (currentInputs: FormInputs): Record<string, string> => {
     const inputsAsNumbers = currentInputs as CalculationInputs;
 
     // Positive value checks
-    const positiveChecks: (keyof CalculationInputs)[] = ['pipeLength', 'pipeOD', 'pipeWT', 'cooldownRateLimit', 'insulationThickness', 'insulationKValue', 'initialN2Flow', 'timeStepS', 'n2TempRampDownHours'];
+    const positiveChecks: (keyof CalculationInputs)[] = ['pipeLength', 'pipeOD', 'pipeWT', 'cooldownRateLimit', 'insulationThickness', 'insulationKValue', 'initialN2Flow', 'timeStepS', 'totalRampTimeHours', 'intermediateRampTimeHours'];
     positiveChecks.forEach(key => {
         if (inputsAsNumbers[key] <= 0) {
             newErrors[key] = 'Must be greater than 0.';
         }
     });
     
-    if (inputsAsNumbers.maxN2Flow < 0) {
-        newErrors.maxN2Flow = 'Cannot be negative.';
-    }
-    if (inputsAsNumbers.extConvectionCoeff < 0) {
-        newErrors.extConvectionCoeff = 'Cannot be negative.';
-    }
+    const nonNegativeChecks: (keyof CalculationInputs)[] = ['maxN2Flow', 'extConvectionCoeff', 'numberOfHolds', 'holdDurationHours', 'purgeVolumes', 'preservationDurationDays', 'preservationLeakRatePercentPerDay', 'operationalMarginPercent'];
+    nonNegativeChecks.forEach(key => {
+        if (inputsAsNumbers[key] < 0) {
+            newErrors[key] = 'Cannot be negative.';
+        }
+    });
 
     // Logical checks
     if (inputsAsNumbers.pipeWT >= inputsAsNumbers.pipeOD / 2) {
@@ -62,6 +69,16 @@ const validateInputs = (currentInputs: FormInputs): Record<string, string> => {
     if (inputsAsNumbers.initialN2Flow > inputsAsNumbers.maxN2Flow) {
         newErrors.initialN2Flow = 'Must be less than or equal to Max N₂ Flow.';
     }
+    if (inputsAsNumbers.intermediateRampTimeHours >= inputsAsNumbers.totalRampTimeHours) {
+        newErrors.intermediateRampTimeHours = 'Must be less than Total Ramp Time.';
+    }
+    if (inputsAsNumbers.intermediateN2Flow < inputsAsNumbers.initialN2Flow) {
+        newErrors.intermediateN2Flow = 'Must be >= Initial Flow.';
+    }
+    if (inputsAsNumbers.intermediateN2Flow > inputsAsNumbers.maxN2Flow) {
+        newErrors.intermediateN2Flow = 'Must be <= Max Flow.';
+    }
+
 
     return newErrors;
 };
@@ -77,6 +94,7 @@ function App() {
     localStorage.getItem('theme') as 'light' | 'dark' || 'light'
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [page, setPage] = useState<'simulation' | 'details' | 'features' | 'guide' | 'contingency'>('simulation');
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -117,6 +135,7 @@ function App() {
     setIsLoading(true);
     setError(null);
     setResults(null);
+    setPage('simulation'); // Reset to the main page on new calculation
     
     // Use setTimeout to allow the UI to update to the loading state
     setTimeout(() => {
@@ -144,46 +163,83 @@ function App() {
   }, [inputs, errors]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans">
-      <header className="bg-white dark:bg-slate-800 shadow-md dark:shadow-slate-700/50">
-        <div className="container mx-auto px-4 py-4 md:px-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-slate-100">
-              N2 Pipeline Cooldown Calculator
-            </h1>
-            <p className="text-gray-600 dark:text-slate-300 mt-1">
-              A rate-controlled transient energy balance model for SS304 pipelines.
-            </p>
+    <div className="min-h-screen font-sans">
+      <div className="screen-only">
+        <header className="bg-white dark:bg-slate-800 shadow-md dark:shadow-slate-700/50 sticky top-0 z-10 no-print">
+          <div className="container mx-auto px-4 py-4 md:px-8 flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-slate-100">
+                N2 Pipeline Cooldown Calculator
+              </h1>
+              <p className="text-gray-600 dark:text-slate-300 mt-1">
+                A rate-controlled transient energy balance model for SS304 pipelines.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+                <PrintButton 
+                  disabled={!results}
+                />
+                <ThemeToggle theme={theme} setTheme={setTheme} />
+            </div>
           </div>
-          <ThemeToggle theme={theme} setTheme={setTheme} />
-        </div>
-      </header>
+          <NavBar 
+              currentPage={page}
+              setCurrentPage={setPage}
+              hasResults={!!results}
+          />
+        </header>
 
-      <main className="container mx-auto p-4 md:p-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1">
-            <InputPanel 
-              inputs={inputs} 
-              onInputChange={handleInputChange} 
-              onCalculate={handleCalculate}
-              isLoading={isLoading}
-              errors={errors}
-            />
-          </div>
-          <div className="lg:col-span-2">
-            <ResultsPanel 
-              results={results} 
-              isLoading={isLoading} 
-              error={error} 
-              theme={theme}
-            />
-          </div>
-        </div>
-      </main>
+        <main className="container mx-auto p-4 md:p-8">
+          {page === 'simulation' && (
+              <div className="flex flex-col lg:flex-row gap-8 items-start">
+                  <div className="w-full lg:w-[420px] lg:flex-shrink-0">
+                      <InputPanel 
+                      inputs={inputs} 
+                      onInputChange={handleInputChange} 
+                      onCalculate={handleCalculate}
+                      isLoading={isLoading}
+                      errors={errors}
+                      />
+                  </div>
+                  <div className="flex-grow w-full">
+                     <div 
+                      className="bg-white dark:bg-slate-800 rounded-lg shadow-lg mx-auto"
+                      style={{ width: '210mm' }}
+                    >
+                      <ResultsPanel 
+                        results={results} 
+                        isLoading={isLoading} 
+                        error={error} 
+                        theme={theme}
+                      />
+                    </div>
+                  </div>
+              </div>
+          )}
+          {page === 'details' && results && (
+              <DetailedResultsPage results={results} />
+          )}
+          {page === 'features' && (
+              <FeatureOverviewPage />
+          )}
+           {page === 'guide' && (
+              <OperatingGuidePage />
+          )}
+          {page === 'contingency' && (
+              <ContingencyGuidePage />
+          )}
+        </main>
 
-      <footer className="text-center py-4 mt-8 text-gray-500 dark:text-slate-400 text-sm">
-        <p>&copy; {new Date().getFullYear()} N2 Pipeline Cooldown Solutions. All rights reserved.</p>
-      </footer>
+        <footer className="text-center py-4 mt-8 text-gray-500 dark:text-slate-400 text-sm no-print">
+          <p>&copy; {new Date().getFullYear()} Thai Nippon Steel Engineering and Construction Company Limited. All rights reserved.</p>
+        </footer>
+      </div>
+
+      {results && (
+        <div id="print-report-container" className="print-only">
+          <PrintReport results={results} />
+        </div>
+      )}
     </div>
   );
 }

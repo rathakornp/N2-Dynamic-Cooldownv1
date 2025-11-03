@@ -71,12 +71,20 @@ const InputPanel: React.FC<InputPanelProps> = ({ inputs, onInputChange, onCalcul
       </fieldset>
 
       <fieldset className="space-y-4">
-        <legend className="text-lg font-semibold text-gray-900 dark:text-slate-100 border-b border-gray-200 dark:border-slate-700 pb-2 w-full">N₂ Vaporizer Capacity</legend>
+        <legend className="text-lg font-semibold text-gray-900 dark:text-slate-100 border-b border-gray-200 dark:border-slate-700 pb-2 w-full">N₂ Vaporizer & Inlet Conditions</legend>
         <StyledInput label="Initial N₂ Inlet Temperature" name="initialN2InletTemp" value={inputs.initialN2InletTemp} unit="°C" onChange={onInputChange} error={errors.initialN2InletTemp} />
         <StyledInput label="Final N₂ Inlet Temperature" name="finalN2InletTemp" value={inputs.finalN2InletTemp} unit="°C" onChange={onInputChange} error={errors.finalN2InletTemp} />
-        <StyledInput label="N₂ Temp Ramp Down Time" name="n2TempRampDownHours" value={inputs.n2TempRampDownHours} unit="hours" onChange={onInputChange} error={errors.n2TempRampDownHours} />
-        <StyledInput label="Initial N₂ Flow" name="initialN2Flow" value={inputs.initialN2Flow} unit="Nm³/h" onChange={onInputChange} error={errors.initialN2Flow} />
-        <StyledInput label="Max N₂ Flow" name="maxN2Flow" value={inputs.maxN2Flow} unit="Nm³/h" onChange={onInputChange} error={errors.maxN2Flow} />
+        
+        <div className="pt-4 space-y-4">
+            <h4 className="text-md font-medium text-gray-800 dark:text-slate-200 -mb-2">N2 Ramp Rate Adjustment</h4>
+            <div className="space-y-4 pl-4 border-l-2 border-gray-200 dark:border-slate-600">
+                <StyledInput label="Initial N₂ Flow" name="initialN2Flow" value={inputs.initialN2Flow} unit="Nm³/h" onChange={onInputChange} error={errors.initialN2Flow} />
+                <StyledInput label="Intermediate N₂ Flow" name="intermediateN2Flow" value={inputs.intermediateN2Flow} unit="Nm³/h" onChange={onInputChange} error={errors.intermediateN2Flow} />
+                <StyledInput label="Max N₂ Flow" name="maxN2Flow" value={inputs.maxN2Flow} unit="Nm³/h" onChange={onInputChange} error={errors.maxN2Flow} />
+                <StyledInput label="Intermediate Ramp Time" name="intermediateRampTimeHours" value={inputs.intermediateRampTimeHours} unit="hours" onChange={onInputChange} error={errors.intermediateRampTimeHours} />
+                <StyledInput label="End Ramp Time" name="totalRampTimeHours" value={inputs.totalRampTimeHours} unit="hours" onChange={onInputChange} error={errors.totalRampTimeHours} />
+            </div>
+        </div>
       </fieldset>
 
        <fieldset className="space-y-4">
@@ -88,8 +96,18 @@ const InputPanel: React.FC<InputPanelProps> = ({ inputs, onInputChange, onCalcul
       </fieldset>
 
       <fieldset className="space-y-4">
-        <legend className="text-lg font-semibold text-gray-900 dark:text-slate-100 border-b border-gray-200 dark:border-slate-700 pb-2 w-full">Constraints</legend>
+        <legend className="text-lg font-semibold text-gray-900 dark:text-slate-100 border-b border-gray-200 dark:border-slate-700 pb-2 w-full">Constraints & Operational Pauses</legend>
         <StyledInput label="Cooldown Rate Limit" name="cooldownRateLimit" value={inputs.cooldownRateLimit} unit="°C/hr" onChange={onInputChange} error={errors.cooldownRateLimit} />
+        <StyledInput label="Number of Hold Periods" name="numberOfHolds" value={inputs.numberOfHolds} unit="" onChange={onInputChange} error={errors.numberOfHolds} step="1" />
+        <StyledInput label="Duration of Each Hold" name="holdDurationHours" value={inputs.holdDurationHours} unit="hours" onChange={onInputChange} error={errors.holdDurationHours} />
+      </fieldset>
+
+      <fieldset className="space-y-4">
+        <legend className="text-lg font-semibold text-gray-900 dark:text-slate-100 border-b border-gray-200 dark:border-slate-700 pb-2 w-full">Purge, Preservation & Margin</legend>
+        <StyledInput label="Number of Purge Volumes" name="purgeVolumes" value={inputs.purgeVolumes} unit="volumes" onChange={onInputChange} error={errors.purgeVolumes} />
+        <StyledInput label="Preservation Duration" name="preservationDurationDays" value={inputs.preservationDurationDays} unit="days" onChange={onInputChange} error={errors.preservationDurationDays} />
+        <StyledInput label="Preservation Leak Rate" name="preservationLeakRatePercentPerDay" value={inputs.preservationLeakRatePercentPerDay} unit="%/day" onChange={onInputChange} error={errors.preservationLeakRatePercentPerDay} />
+        <StyledInput label="Operational Margin" name="operationalMarginPercent" value={inputs.operationalMarginPercent} unit="%" onChange={onInputChange} error={errors.operationalMarginPercent} />
       </fieldset>
 
       <fieldset className="space-y-4">

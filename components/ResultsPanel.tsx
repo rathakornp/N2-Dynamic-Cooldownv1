@@ -1,6 +1,6 @@
 import React from 'react';
 import { CalculationResults, TimeSeriesProfilePoint } from '../types';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { Area, AreaChart, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 interface ResultsPanelProps {
   results: CalculationResults | null;
@@ -16,15 +16,16 @@ const formatNumber = (num: number | undefined, digits = 2) => {
 
 const CustomTooltip = ({ active, payload, label, yAxisLabel, xAxisLabel }: any) => {
     if (active && payload && payload.length) {
-        const data = payload[0];
         const unit = yAxisLabel.match(/\(([^)]+)\)/)?.[1] || '';
         const xUnit = xAxisLabel.match(/\(([^)]+)\)/)?.[1] || '';
         return (
             <div className="p-2 bg-white/80 dark:bg-slate-900/80 border border-gray-300 dark:border-slate-600 rounded-md shadow-lg backdrop-blur-sm">
                 <p className="label text-sm text-gray-700 dark:text-slate-200 font-semibold">{`${xAxisLabel.split(' ')[0]}: ${formatNumber(label, 2)} ${xUnit}`}</p>
-                <p className="intro text-sm" style={{ color: data.color }}>
-                    {`${data.name}: ${formatNumber(data.value, 2)} ${unit}`}
-                </p>
+                {payload.map((entry: any, index: number) => (
+                  <p key={`item-${index}`} className="intro text-sm" style={{ color: entry.color }}>
+                      {`${entry.name}: ${formatNumber(entry.value, 2)} ${unit}`}
+                  </p>
+                ))}
             </div>
         );
     }
@@ -32,10 +33,10 @@ const CustomTooltip = ({ active, payload, label, yAxisLabel, xAxisLabel }: any) 
 };
 
 
-const MetricCard: React.FC<{ title: string; value: string; unit: string; small?: boolean }> = ({ title, value, unit, small = false }) => (
+const MetricCard: React.FC<{ title: string; value: string; unit: string; small?: boolean; valueClassName?: string }> = ({ title, value, unit, small = false, valueClassName }) => (
     <div className={`bg-gray-100 dark:bg-slate-700 p-4 rounded-lg ${small ? 'text-center' : ''}`}>
         <h3 className={`${small ? 'text-sm' : 'text-md'} font-medium text-gray-600 dark:text-slate-200`}>{title}</h3>
-        <p className={`${small ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-slate-100`}>
+        <p className={`${small ? 'text-xl' : 'text-2xl'} font-bold ${valueClassName || 'text-gray-900 dark:text-slate-100'}`}>
             {value} <span className="text-base font-normal text-gray-500 dark:text-slate-200">{unit}</span>
         </p>
     </div>
@@ -46,19 +47,25 @@ const chartColors = {
         temperature: '#4F46E5',
         n2Flow: '#7C3AED',
         n2Accumulated: '#059669',
-        q_removed: '#16A34A',
-        q_total: '#EA580C',
+        heatRemovedAccumulated: '#16A34A',
+        heatAddedAccumulated: '#EA580C',
         q_accumulation: '#DC2626',
         pressure_bar: '#D946EF', // fuchsia-500
+        q_removed: '#0E7490', // cyan-700
+        q_convection: '#38BDF8', // sky-400 (light blue)
+        q_radiation: '#D97706', // amber-600
     },
     dark: {
         temperature: '#818CF8', // indigo-400
         n2Flow: '#F472B6', // pink-400
         n2Accumulated: '#34D399', // emerald-400
-        q_removed: '#4ADE80', // green-400
-        q_total: '#FB923C', // orange-400
+        heatRemovedAccumulated: '#4ADE80', // green-400
+        heatAddedAccumulated: '#FB923C', // orange-400
         q_accumulation: '#F87171', // red-400
         pressure_bar: '#F0ABFC', // fuchsia-300
+        q_removed: '#67E8F9', // cyan-300
+        q_convection: '#7DD3FC', // sky-300 (light blue)
+        q_radiation: '#FDBA74', // orange-300
     }
 }
 
@@ -72,7 +79,7 @@ const SingleMetricChart: React.FC<{
     totalTime: number;
 }> = ({ data, dataKey, title, yAxisLabel, theme, referenceLine, totalTime }) => {
     const gridStrokeColor = theme === 'dark' ? '#475569' : '#E2E8F0'; // slate-600 / slate-200
-    const textColor = theme === 'dark' ? '#E2E8F0' : '#334155'; // slate-200 / slate-700
+    const textColor = theme === 'dark' ? '#E2E8F0' : '#374151'; // slate-200 / gray-700
     const strokeColor = chartColors[theme][dataKey] || '#8884d8';
     const refLineColor = theme === 'dark' ? '#F87171' : '#EF4444'; // red-400 / red-500
     const lineName = title.split(' vs.')[0];
@@ -144,9 +151,10 @@ const DynamicProfileChart: React.FC<{
     targetTemp: number;
     title: string;
     theme: 'light' | 'dark';
-}> = ({ data, targetTemp, title, theme }) => {
+    pipeLength: number;
+}> = ({ data, targetTemp, title, theme, pipeLength }) => {
     const gridStrokeColor = theme === 'dark' ? '#475569' : '#E2E8F0';
-    const textColor = theme === 'dark' ? '#E2E8F0' : '#334155';
+    const textColor = theme === 'dark' ? '#E2E8F0' : '#374151'; // slate-200 / gray-700
     const refLineColor = theme === 'dark' ? '#F87171' : '#EF4444';
     const yAxisLabel = "Pipe Skin Temperature (°C)";
     const xAxisLabel = "Pipeline Length (m)";
@@ -189,7 +197,7 @@ const DynamicProfileChart: React.FC<{
                             tick={{ fontSize: 12 }}
                             tickFormatter={(value) => formatNumber(value, 0)}
                             label={{ value: xAxisLabel, position: 'insideBottom', dy: 10, fill: textColor, fontSize: 14 }}
-                            domain={['dataMin', 'dataMax']}
+                            domain={[0, pipeLength]}
                         />
                         <YAxis 
                             label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', fill: textColor, fontSize: 14, dx: -10 }} 
@@ -247,7 +255,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, isLoading, error, 
     
     if (isLoading) {
         return (
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-lg h-full flex items-center justify-center">
+            <div className="p-6 h-full flex items-center justify-center">
                 <div className="text-center">
                      <svg className="animate-spin mx-auto h-12 w-12 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -261,7 +269,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, isLoading, error, 
     
     if (error) {
          return (
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-lg h-full flex items-center justify-center">
+            <div className="p-6 h-full flex items-center justify-center">
                 <div className="text-center text-red-500 dark:text-red-400">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -275,7 +283,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, isLoading, error, 
     
     if (!results) {
         return (
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-lg h-full flex items-center justify-center">
+            <div className="p-6 h-full flex items-center justify-center">
                 <div className="text-center">
                     <h2 className="text-xl font-semibold text-gray-700 dark:text-slate-300">Awaiting Calculation</h2>
                     <p className="mt-2 text-gray-500 dark:text-slate-400">Enter your parameters and click "Calculate Cooldown" to see the results.</p>
@@ -292,20 +300,50 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, isLoading, error, 
             </div>
         </fieldset>
     );
+    
+    const gridStrokeColor = theme === 'dark' ? '#475569' : '#E2E8F0';
+    const textColor = theme === 'dark' ? '#E2E8F0' : '#374151';
+
+    const peakRate = results.peakCooldownRate;
+    const cooldownRateColorClass = peakRate > 30 
+        ? 'text-red-500 dark:text-red-400' 
+        : 'text-green-600 dark:text-green-400';
 
     return (
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-lg space-y-8">
+        <div className="p-6 space-y-8">
             <div>
-                 <div className="grid grid-cols-1 gap-y-4">
-                    <Section title="Overview Summary">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <MetricCard title="Cooldown Time" value={formatNumber(results.totalTimeHours)} unit="hours" />
-                            <MetricCard title="Total N₂ Consumed" value={formatNumber(results.totalN2Nm3, 0)} unit="Nm³" />
-                            <MetricCard title="Peak Cooldown Rate" value={formatNumber(results.peakCooldownRate, 1)} unit="°C/hr" />
-                            <MetricCard title="Total N₂ Mass" value={formatNumber(results.totalN2Kg, 0)} unit="kg" />
-                        </div>
-                    </Section>
-                 </div>
+                <Section title="Overview Summary">
+                    <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
+                        <MetricCard title="Cooldown Time" value={formatNumber(results.totalTimeHours)} unit="hours" />
+                        <MetricCard 
+                            title="Peak Cooldown Rate" 
+                            value={formatNumber(peakRate, 1)} 
+                            unit="°C/hr" 
+                            valueClassName={cooldownRateColorClass}
+                        />
+                    </div>
+                </Section>
+                <Section title="N₂ Consumption Breakdown">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                       <MetricCard title="N₂ for Purge" value={formatNumber(results.n2ForPurgeNm3, 0)} unit="Nm³" small/>
+                       <MetricCard title="N₂ for Cooldown" value={formatNumber(results.n2ForCooldownNm3, 0)} unit="Nm³" small/>
+                       <MetricCard title="N₂ for Hold Periods" value={formatNumber(results.n2ForHoldsNm3, 0)} unit="Nm³" small/>
+                       <MetricCard title="N₂ for Preservation" value={formatNumber(results.n2ForPreservationNm3, 0)} unit="Nm³" small/>
+                    </div>
+                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <MetricCard title="Sub-Total N₂" value={formatNumber(results.subTotalN2Nm3, 0)} unit="Nm³" />
+                        <MetricCard title="Operational Margin" value={formatNumber(results.operationalMarginNm3, 0)} unit={`Nm³ (${results.inputs.operationalMarginPercent}%)`} />
+                    </div>
+                    <div className="mt-4 bg-indigo-50 dark:bg-indigo-900/40 p-4 rounded-lg border border-indigo-200 dark:border-indigo-700">
+                         <MetricCard 
+                            title="Grand Total N₂ Consumption" 
+                            value={formatNumber(results.grandTotalN2Nm3, 0)} 
+                            unit="Nm³" 
+                            valueClassName="text-indigo-600 dark:text-indigo-300"
+                        />
+                    </div>
+                </Section>
+                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4 mt-6">
                     <Section title="Heat Ingress Summary">
                          <div className="grid grid-cols-1 gap-4">
@@ -315,19 +353,18 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, isLoading, error, 
                         </div>
                     </Section>
 
-                    <Section title="Heat Removal Summary">
+                    <Section title="N₂ Cooldown Heat Removal">
                         <div className="grid grid-cols-1 gap-4">
                             <MetricCard title="Total Heat Removed" value={formatNumber(results.totalHeatRemovedMJ)} unit="MJ" small/>
                             <MetricCard title="Peak Cooling Power" value={formatNumber(results.peakHeatRemovalkW)} unit="kW" small/>
                         </div>
                     </Section>
                     
-                    <Section title="Pipe Data Summary">
+                    <Section title="Pipe Summary">
                         <div className="grid grid-cols-1 gap-4">
                             <MetricCard title="Pipe Mass" value={formatNumber(results.pipeMass, 0)} unit="kg" small/>
-                            <MetricCard title="Pipe Gas Inventory" value={formatNumber(results.pipeVolumeInNm3, 1)} unit="Nm³" small />
-                            <MetricCard title="Pipe Inner Radius" value={formatNumber(results.pipeInnerRadius)} unit="mm" small/>
-                            <MetricCard title="Pipe Outer Radius" value={formatNumber(results.pipeOuterRadius)} unit="mm" small/>
+                            <MetricCard title="Pipeline Volume" value={formatNumber(results.pipeVolume, 2)} unit="m³" small/>
+                            <MetricCard title="Pipe Cross-Section Area" value={formatNumber(results.pipeCrossSectionArea * 10000, 1)} unit="cm²" small/>
                         </div>
                     </Section>
                 </div>
@@ -339,11 +376,12 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, isLoading, error, 
                     targetTemp={results.targetTemp}
                     title="Dynamic Cooldown Temperature Profile"
                     theme={theme}
+                    pipeLength={results.pipeLength}
                 />
                 <SingleMetricChart 
                     data={results.chartData}
                     dataKey="temperature"
-                    title="Pipe Outlet Skin Temperature vs. Time"
+                    title="Pipe Wall Skin Temperature vs. Time"
                     yAxisLabel="Temperature (°C)"
                     theme={theme}
                     totalTime={results.totalTimeHours}
@@ -368,27 +406,75 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, isLoading, error, 
                  <SingleMetricChart 
                     data={results.chartData}
                     dataKey="pressure_bar"
-                    title="Pipeline Pressure vs. Time"
-                    yAxisLabel="Pressure (bar)"
+                    title="Pipeline Inlet Pressure vs. Time"
+                    yAxisLabel="Inlet Pressure (bara)"
                     theme={theme}
                     totalTime={results.totalTimeHours}
                 />
-                 <SingleMetricChart 
+                <SingleMetricChart 
                     data={results.chartData}
-                    dataKey="q_removed"
-                    title="N₂ Cooling Power vs. Time"
-                    yAxisLabel="Cooling Power (kW)"
+                    dataKey="heatRemovedAccumulated"
+                    title="Accumulated Heat Removed by N₂ vs. Time"
+                    yAxisLabel="Energy (MJ)"
                     theme={theme}
                     totalTime={results.totalTimeHours}
                 />
-                 <SingleMetricChart 
+                <SingleMetricChart 
                     data={results.chartData}
-                    dataKey="q_total"
-                    title="Heat Ingress Rate vs. Time"
-                    yAxisLabel="Heat Flow (kW)"
+                    dataKey="heatAddedAccumulated"
+                    title="Accumulated Heat Ingress vs. Time"
+                    yAxisLabel="Energy (MJ)"
                     theme={theme}
                     totalTime={results.totalTimeHours}
                 />
+                <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg shadow-inner">
+                    <h3 className="text-md font-semibold text-gray-800 dark:text-slate-100 mb-4 text-center">Accumulated Heat Ingress Components vs. Time</h3>
+                    <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={results.chartData} margin={{ top: 5, right: 20, left: 25, bottom: 25 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke={gridStrokeColor} />
+                                <XAxis 
+                                    type="number"
+                                    dataKey="time" 
+                                    stroke={textColor} 
+                                    tick={{ fontSize: 12 }}
+                                    tickFormatter={(value) => formatNumber(value, 1)}
+                                    label={{ value: "Time (hr)", position: 'insideBottom', dy: 10, fill: textColor, fontSize: 14 }}
+                                    domain={[0, results.totalTimeHours]}
+                                    allowDataOverflow={true}
+                                />
+                                <YAxis 
+                                    label={{ value: "Energy (MJ)", angle: -90, position: 'insideLeft', fill: textColor, fontSize: 14 }} 
+                                    stroke={textColor} 
+                                    tick={{ fontSize: 12 }}
+                                    tickFormatter={(value) => typeof value === 'number' ? formatNumber(value, 1) : value}
+                                />
+                                <Tooltip
+                                    content={<CustomTooltip yAxisLabel={"Energy (MJ)"} xAxisLabel={"Time (hr)"} />}
+                                />
+                                <Legend verticalAlign="top" height={36} wrapperStyle={{fontSize: "14px"}}/>
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="heatAddedConvectionAccumulated" 
+                                    name="Convective" 
+                                    stackId="1" 
+                                    stroke={chartColors[theme].q_convection} 
+                                    fill={chartColors[theme].q_convection} 
+                                    fillOpacity={0.6}
+                                />
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="heatAddedRadiationAccumulated" 
+                                    name="Radiative" 
+                                    stackId="1" 
+                                    stroke={chartColors[theme].q_radiation} 
+                                    fill={chartColors[theme].q_radiation}
+                                    fillOpacity={0.6}
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
             </div>
         </div>
     );

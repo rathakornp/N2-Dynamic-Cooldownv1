@@ -13,7 +13,9 @@ export interface CalculationInputs {
   // N2 Vaporizer
   initialN2InletTemp: number; // New
   finalN2InletTemp: number; // Renamed from n2InletTemp
-  n2TempRampDownHours: number; // New
+  totalRampTimeHours: number; // Renamed from n2TempRampDownHours
+  intermediateRampTimeHours: number; // New for multi-stage ramp
+  intermediateN2Flow: number; // New for multi-stage ramp
   initialN2Flow: number;
   maxN2Flow: number;
 
@@ -23,6 +25,14 @@ export interface CalculationInputs {
   extConvectionCoeff: number;
   emissivity: number;
   cooldownRateLimit: number;
+  numberOfHolds: number; // New
+  holdDurationHours: number; // New
+
+  // Purge, Preservation & Margin
+  purgeVolumes: number; // New
+  preservationDurationDays: number; // New
+  preservationLeakRatePercentPerDay: number; // New
+  operationalMarginPercent: number; // New
 
   // Simulation
   timeStepS: number;
@@ -42,6 +52,8 @@ export interface ChartDataPoint {
   q_accumulation: number; // net heat change in the pipe in kW
   netHeatRemovedAccumulated: number; // in MJ
   heatAddedAccumulated: number; // in MJ
+  heatAddedConvectionAccumulated: number; // in MJ
+  heatAddedRadiationAccumulated: number; // in MJ
   heatRemovedAccumulated: number; // in MJ
 }
 
@@ -56,12 +68,24 @@ export interface TimeSeriesProfilePoint {
 }
 
 export interface CalculationResults {
+  // Original inputs for reference
+  inputs: CalculationInputs;
+
   // Key Metrics
   totalTimeHours: number;
-  totalN2Nm3: number;
+  totalN2Nm3: number; // Renamed to n2ForCooldownNm3, but keeping for compatibility until refactor
   totalN2Kg: number;
   peakCooldownRate: number;
   peakHeatRemovalkW: number;
+  
+  // N2 Consumption Breakdown
+  n2ForPurgeNm3: number; // New
+  n2ForCooldownNm3: number; // Explicitly for cooldown phase
+  n2ForHoldsNm3: number; 
+  n2ForPreservationNm3: number; // New
+  subTotalN2Nm3: number; // New
+  operationalMarginNm3: number; // New
+  grandTotalN2Nm3: number; // New (replaces totalPlannedN2Nm3)
   
   // Heat Totals
   totalHeatRemovedMJ: number;
@@ -89,12 +113,13 @@ export interface CalculationResults {
   deltaT_pipe_final: number; // °C
   
   // Pass-through for charting and analysis
+  pipeLength: number;
   maxN2Flow: number;
   cooldownRateLimit: number;
   targetTemp: number;
   initialN2InletTemp: number;
   finalN2InletTemp: number;
-  n2TempRampDownHours: number;
+  totalRampTimeHours: number;
 
   // Chart Data
   chartData: ChartDataPoint[];

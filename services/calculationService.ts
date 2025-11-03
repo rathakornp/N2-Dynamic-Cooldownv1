@@ -211,9 +211,12 @@ export function runCooldownSimulation(
     
     const {
         pipeLength, pipeOD, pipeWT, pipeRoughness, initialTemp, targetTemp, ambientTemp, 
-        initialN2InletTemp, finalN2InletTemp, n2TempRampDownHours,
+        initialN2InletTemp, finalN2InletTemp, totalRampTimeHours,
+        intermediateRampTimeHours, intermediateN2Flow,
         initialN2Flow, maxN2Flow, insulationThickness, insulationKValue,
         extConvectionCoeff, emissivity, cooldownRateLimit, timeStepS,
+        numberOfHolds, holdDurationHours,
+        purgeVolumes, preservationDurationDays, preservationLeakRatePercentPerDay, operationalMarginPercent
     } = inputs;
 
     if (timeStepS <= 0) return { error: "Time step must be positive." };
@@ -268,20 +271,21 @@ export function runCooldownSimulation(
         n2Accumulated: 0,
         pressure_bar: ATMOSPHERIC_PRESSURE_BAR,
         q_total: 0, q_convection: 0, q_radiation: 0, q_removed: 0, q_accumulation: 0,
-        netHeatRemovedAccumulated: 0, heatAddedAccumulated: 0, heatRemovedAccumulated: 0,
+        netHeatRemovedAccumulated: 0, heatAddedAccumulated: 0, heatRemovedAccumulated: 0, heatAddedConvectionAccumulated: 0, heatAddedRadiationAccumulated: 0,
     });
-    timeSeriesProfile.push({ time: 0, profile: pipeTempsC.map((temp, index) => ({ length_m: (index + 0.5) * segmentLength_m, temperature: temp })) });
+    timeSeriesProfile.push({ time: 0, profile: pipeTempsC.map((temp, index) => ({ length_m: (index + 1) * segmentLength_m, temperature: temp })) });
 
 
     while (pipeTempsC[NUM_SEGMENTS - 1] > targetTemp && iteration < MAX_ITERATIONS) {
         iteration++;
         const prevOutletTempC = pipeTempsC[NUM_SEGMENTS - 1];
+        const currentTimeHours = currentTimeS / 3600;
 
         // --- New Dynamic N2 Inlet Temperature Logic ---
-        const currentTimeHours = currentTimeS / 3600;
+        // N2 inlet temperature ramps down linearly over the same duration as the main flow ramp.
         let currentN2InletTempC = finalN2InletTemp;
-        if (n2TempRampDownHours > 0 && currentTimeHours < n2TempRampDownHours) {
-            const rampProgress = currentTimeHours / n2TempRampDownHours;
+        if (totalRampTimeHours > 0 && currentTimeHours < totalRampTimeHours) {
+            const rampProgress = currentTimeHours / totalRampTimeHours;
             currentN2InletTempC = initialN2InletTemp + rampProgress * (finalN2InletTemp - initialN2InletTemp);
         }
 
@@ -324,12 +328,13 @@ export function runCooldownSimulation(
         }
 
         const outletTempC = pipeTempsC[NUM_SEGMENTS - 1];
+        
         const actualCooldownRate_C_per_hr = (prevOutletTempC - outletTempC) / (timeStepS / 3600.0);
         
         currentTimeS += timeStepS;
 
         if (currentTimeS >= nextSnapshotTimeS) {
-            const currentProfile: LengthProfileDataPoint[] = pipeTempsC.map((temp, index) => ({ length_m: (index + 0.5) * segmentLength_m, temperature: temp }));
+            const currentProfile: LengthProfileDataPoint[] = pipeTempsC.map((temp, index) => ({ length_m: (index + 1) * segmentLength_m, temperature: temp }));
             timeSeriesProfile.push({ time: currentTimeS / 3600, profile: currentProfile });
             nextSnapshotTimeS += 3600;
         }
@@ -369,15 +374,31 @@ export function runCooldownSimulation(
             q_radiation: total_q_radiation_W / 1000, q_removed: total_q_removed_W / 1000,
             q_accumulation: - (total_q_ingress_W - total_q_removed_W) / 1000,
             heatAddedAccumulated: lastPoint.heatAddedAccumulated + (total_q_ingress_W * timeStepS / 1e6),
+            heatAddedConvectionAccumulated: lastPoint.heatAddedConvectionAccumulated + (total_q_convection_W * timeStepS / 1e6),
+            heatAddedRadiationAccumulated: lastPoint.heatAddedRadiationAccumulated + (total_q_radiation_W * timeStepS / 1e6),
             heatRemovedAccumulated: lastPoint.heatRemovedAccumulated + (total_q_removed_W * timeStepS / 1e6),
             netHeatRemovedAccumulated: (lastPoint.heatRemovedAccumulated + (total_q_removed_W * timeStepS / 1e6)) - (lastPoint.heatAddedAccumulated + (total_q_ingress_W * timeStepS / 1e6)),
         });
         
-        const error = cooldownRateLimit - actualCooldownRate_C_per_hr;
-        const Kp = 50;
-        const flowAdjustment = Kp * error;
-        const nextN2Flow = currentN2Flow_Nm3_h + flowAdjustment;
-        currentN2Flow_Nm3_h = Math.max(0, Math.min(nextN2Flow, maxN2Flow));
+        // --- N2 Flow Rate Controller (Two-Stage Linear Ramp) ---
+        if (totalRampTimeHours > 0 && currentTimeHours <= totalRampTimeHours) {
+            if (currentTimeHours <= intermediateRampTimeHours) {
+                // Stage 1: Ramp from initial to intermediate flow
+                const rampProgress = intermediateRampTimeHours > 0 ? currentTimeHours / intermediateRampTimeHours : 1;
+                currentN2Flow_Nm3_h = initialN2Flow + rampProgress * (intermediateN2Flow - initialN2Flow);
+            } else {
+                // Stage 2: Ramp from intermediate to max flow
+                const timeInStage2 = currentTimeHours - intermediateRampTimeHours;
+                const durationStage2 = totalRampTimeHours - intermediateRampTimeHours;
+                const rampProgress = durationStage2 > 0 ? timeInStage2 / durationStage2 : 1;
+                currentN2Flow_Nm3_h = intermediateN2Flow + rampProgress * (maxN2Flow - intermediateN2Flow);
+            }
+        } else {
+            // If ramp duration is zero or the ramp is complete, hold at max flow.
+            currentN2Flow_Nm3_h = maxN2Flow;
+        }
+        currentN2Flow_Nm3_h = Math.min(maxN2Flow, Math.max(initialN2Flow, currentN2Flow_Nm3_h));
+
         
         const { qRemovedBySegmentW: qRemovedAtMaxFlow } = calculateN2TempProfile(
             pipeTempsC, currentN2InletTempC, maxN2Flow, pipeInnerDiameter_m, segmentInnerSurfaceArea_m2
@@ -393,24 +414,69 @@ export function runCooldownSimulation(
     if (iteration >= MAX_ITERATIONS) {
         return { error: "Simulation timed out. Check input parameters." };
     }
+    
+    const n2ForCooldownNm3 = totalN2Used_Nm3;
+
+    // --- Post-Simulation: Calculate N2 for Hold Periods ---
+    let n2ForHoldsNm3 = 0;
+    if (numberOfHolds > 0 && holdDurationHours > 0) {
+        // Assume holds occur at the coldest state for a conservative estimate
+        const finalPipeTemps = new Array(NUM_SEGMENTS).fill(targetTemp);
+        let totalIngressAtTarget_W = 0;
+        for (let i = 0; i < NUM_SEGMENTS; i++) {
+            const ingress = calculateHeatIngress(finalPipeTemps[i], ambientTemp, segmentInsulationOuterSurfaceArea_m2, emissivity, extConvectionCoeff, R_conductive_segment);
+            totalIngressAtTarget_W += ingress.q_ingress_total_W;
+        }
+        
+        const heatToCancel_J_per_s = totalIngressAtTarget_W;
+        const deltaT_N2 = targetTemp - finalN2InletTemp;
+        const cp_N2 = getCp_N2((targetTemp + finalN2InletTemp) / 2);
+        
+        if (deltaT_N2 > 0) { // Ensure there is a positive temperature difference for heat transfer
+            const requiredMassFlow_kg_s = heatToCancel_J_per_s / (cp_N2 * deltaT_N2);
+            const requiredVolumeFlow_Nm3_h = (requiredMassFlow_kg_s * 3600) / RHO_N2_NORMAL;
+            const totalHoldHours = numberOfHolds * holdDurationHours;
+            n2ForHoldsNm3 = requiredVolumeFlow_Nm3_h * totalHoldHours;
+        }
+    }
+    
+    // --- Post-Simulation: Calculate N2 for Purge & Preservation ---
+    const n2ForPurgeNm3 = pipeVolumeInNm3 * purgeVolumes;
+    const n2ForPreservationNm3 = pipeVolumeInNm3 * (preservationLeakRatePercentPerDay / 100) * preservationDurationDays;
+    
+    // --- Post-Simulation: Final Totals with Margin ---
+    const subTotalN2Nm3 = n2ForCooldownNm3 + n2ForHoldsNm3 + n2ForPurgeNm3 + n2ForPreservationNm3;
+    const operationalMarginNm3 = subTotalN2Nm3 * (operationalMarginPercent / 100);
+    const grandTotalN2Nm3 = subTotalN2Nm3 + operationalMarginNm3;
+
 
     const finalData = chartData[chartData.length - 1];
     const peakCooldownRate = Math.max(...chartData.map(p => p.cooldownRate));
     const peakHeatRemovalkW = Math.max(...chartData.map(p => p.q_removed));
 
     const finalTemperatureProfile: LengthProfileDataPoint[] = pipeTempsC.map((temp, index) => ({
-      length_m: (index + 0.5) * segmentLength_m,
+      length_m: (index + 1) * segmentLength_m,
       temperature: temp,
     }));
     
     timeSeriesProfile.push({ time: currentTimeS / 3600, profile: finalTemperatureProfile });
 
     const results: CalculationResults = {
+        inputs: inputs,
         totalTimeHours: currentTimeS / 3600,
-        totalN2Nm3: totalN2Used_Nm3,
-        totalN2Kg: totalN2Used_Nm3 * RHO_N2_NORMAL,
+        totalN2Nm3: totalN2Used_Nm3, // Kept for historical reference if needed
+        totalN2Kg: grandTotalN2Nm3 * RHO_N2_NORMAL, // Base total on grand total
         peakCooldownRate: peakCooldownRate,
         peakHeatRemovalkW: peakHeatRemovalkW,
+        
+        n2ForPurgeNm3: n2ForPurgeNm3,
+        n2ForCooldownNm3: n2ForCooldownNm3,
+        n2ForHoldsNm3: n2ForHoldsNm3,
+        n2ForPreservationNm3: n2ForPreservationNm3,
+        subTotalN2Nm3: subTotalN2Nm3,
+        operationalMarginNm3: operationalMarginNm3,
+        grandTotalN2Nm3: grandTotalN2Nm3,
+
         totalHeatRemovedMJ: finalData.heatRemovedAccumulated,
         totalHeatIngressMJ: finalData.heatAddedAccumulated,
         totalHeatIngressConvectionMJ: finalData.heatAddedAccumulated * (finalData.q_convection / finalData.q_total || 1),
@@ -430,12 +496,13 @@ export function runCooldownSimulation(
         R_insulation: R_insulation_segment * NUM_SEGMENTS,
         deltaT_pipe_initial: 0,
         deltaT_pipe_final: 0,
+        pipeLength: pipeLength,
         maxN2Flow: maxN2Flow,
         cooldownRateLimit: cooldownRateLimit,
         targetTemp: targetTemp,
         initialN2InletTemp,
         finalN2InletTemp,
-        n2TempRampDownHours,
+        totalRampTimeHours,
         chartData: chartData,
         temperatureProfile: finalTemperatureProfile,
         timeSeriesProfile: timeSeriesProfile,

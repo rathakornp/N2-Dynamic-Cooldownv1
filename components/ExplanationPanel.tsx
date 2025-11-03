@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { GoogleGenAI } from '@google/ai/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { CalculationResults } from '../types';
 
 interface ExplanationPanelProps {
@@ -22,9 +22,9 @@ const ExplanationPanel: React.FC<ExplanationPanelProps> = ({ results, theme }) =
       The model is a 1D segmented simulation showing temperature profiles along the pipe at hourly intervals.
       Based on the following summary, provide a concise, easy-to-understand explanation of the cooldown process.
       
-      1.  **Overall Dynamics & Control Strategy**: Start with the big picture. The cooldown took ${results.totalTimeHours.toFixed(2)} hours and consumed ${results.totalN2Nm3.toFixed(0)} Nm³ of nitrogen. Crucially, this was a highly controlled process. The simulation models a realistic operator strategy where the N₂ inlet temperature was gradually ramped down from an initial ${results.initialN2InletTemp}°C to a final ${results.finalN2InletTemp}°C over ${results.n2TempRampDownHours} hours. Explain that this, combined with controlling the flow rate to respect a ${results.cooldownRateLimit}°C/hr limit, ensures a safe, shock-free cooldown.
+      1.  **Overall Dynamics & Control Strategy**: Start with the big picture. The cooldown took ${results.totalTimeHours.toFixed(2)} hours and consumed ${results.totalN2Nm3.toFixed(0)} Nm³ of nitrogen. Crucially, this was a highly controlled process. The simulation models a realistic operator strategy where the N₂ inlet temperature was gradually ramped down from an initial ${results.initialN2InletTemp}°C to a final ${results.finalN2InletTemp}°C over ${results.totalRampTimeHours} hours. Explain that this, combined with controlling the flow rate to respect a ${results.cooldownRateLimit}°C/hr limit, ensures a safe, shock-free cooldown.
 
-      2.  **Initial Cooldown & The Mixing Zone (Hours 1-${results.n2TempRampDownHours})**: This is the most critical phase. Explain that the gentle temperature drop at the pipe inlet during these first hours is a direct result of the N₂ temperature ramp-down. Simultaneously, a "thermal front" forms where the incoming cold N₂ mixes with the resident warm gas (${results.pipeVolumeInNm3.toFixed(1)} Nm³), which must be displaced. Explain how this mixing and the gentle temperature ramp create the smooth, realistic temperature profiles seen in the first few hours.
+      2.  **Initial Cooldown & The Mixing Zone (Hours 1-${results.totalRampTimeHours})**: This is the most critical phase. Explain that the gentle temperature drop at the pipe inlet during these first hours is a direct result of the N₂ temperature ramp-down. Simultaneously, a "thermal front" forms where the incoming cold N₂ mixes with the resident warm gas (${results.pipeVolumeInNm3.toFixed(1)} Nm³), which must be displaced. Explain how this mixing and the gentle temperature ramp create the smooth, realistic temperature profiles seen in the first few hours.
 
       3.  **Temperature Profile Evolution (The "Cold Wave")**: After the initial phase, describe how this thermal front, or "wave of cold," progresses down the pipeline in the hourly snapshots. Explain why the inlet is always coldest and the outlet is warmest. This is the core of the 1D model: as the nitrogen flows, it absorbs heat from the pipe wall and warms up, making it progressively less effective at cooling the pipe further downstream. This creates the characteristic temperature gradient seen in the chart.
 
