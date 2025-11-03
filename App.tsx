@@ -83,6 +83,17 @@ const validateInputs = (currentInputs: FormInputs): Record<string, string> => {
     return newErrors;
 };
 
+const getInitialTheme = (): 'light' | 'dark' => {
+  const storedTheme = localStorage.getItem('theme');
+  if (storedTheme === 'dark' || storedTheme === 'light') {
+    return storedTheme;
+  }
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark';
+  }
+  return 'light';
+};
+
 
 function App() {
   // Fix: Use the `FormInputs` type for the state to correctly handle empty input fields.
@@ -90,29 +101,16 @@ function App() {
   const [results, setResults] = useState<CalculationResults | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [theme, setTheme] = useState<'light' | 'dark'>(
-    localStorage.getItem('theme') as 'light' | 'dark' || 'light'
-  );
+  const [theme, setTheme] = useState(getInitialTheme);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [page, setPage] = useState<'simulation' | 'details' | 'features' | 'guide' | 'contingency'>('simulation');
 
   useEffect(() => {
     const root = window.document.documentElement;
-    const isDark = theme === 'dark';
-    root.classList.toggle('dark', isDark);
+    root.classList.remove('light', 'dark');
+    root.classList.add(theme);
     localStorage.setItem('theme', theme);
   }, [theme]);
-
-  // Set initial theme based on system preference if not in localStorage
-  useEffect(() => {
-      const storedTheme = localStorage.getItem('theme');
-      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (!storedTheme && systemPrefersDark) {
-          setTheme('dark');
-      } else if (storedTheme) {
-          setTheme(storedTheme as 'light' | 'dark');
-      }
-  }, []);
 
   // Validate inputs whenever they change
   useEffect(() => {
