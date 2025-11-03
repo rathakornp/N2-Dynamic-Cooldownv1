@@ -1,0 +1,5 @@
+{
+  "name": "N2 Pipeline Cooldown Calculator",
+  "description": "A specialized engineering tool to simulate and predict the rate-controlled cooldown of an industrial pipeline using gaseous Nitrogen (N2). It calculates total cooldown time, N2 consumption, and generates a procedural N2 flow rate profile based on user-defined thermal shock limits and vaporizer capacity.",
+  "requestFramePermissions": []
+}
