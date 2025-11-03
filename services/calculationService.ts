@@ -1,4 +1,4 @@
-import { CalculationInputs, CalculationResults, ChartDataPoint, LengthProfileDataPoint, TimeSeriesProfilePoint } from '../types';
+import { CalculationInputs, CalculationResults, ChartDataPoint, LengthProfileDataPoint, TimeSeriesProfilePoint } from '../types.ts';
 
 // Physical Constants
 const RHO_SS304 = 8000; // Density of SS304 in kg/m³

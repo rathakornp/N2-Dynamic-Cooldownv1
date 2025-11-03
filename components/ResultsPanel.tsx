@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalculationResults, TimeSeriesProfilePoint } from '../types';
+import { CalculationResults, TimeSeriesProfilePoint } from '../types.ts';
 import { Area, AreaChart, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 interface ResultsPanelProps {

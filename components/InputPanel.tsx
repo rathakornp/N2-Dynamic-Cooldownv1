@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalculationInputs } from '../types';
+import { CalculationInputs } from '../types.ts';
 
 // Fix: Define a type for form inputs that allows empty strings, to match the props from App.tsx.
 type FormInputs = { [K in keyof CalculationInputs]: CalculationInputs[K] | '' };

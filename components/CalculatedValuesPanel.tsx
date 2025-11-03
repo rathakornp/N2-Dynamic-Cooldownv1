@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalculationResults } from '../types';
+import { CalculationResults } from '../types.ts';
 
 interface CalculatedValuesPanelProps {
   results: CalculationResults;

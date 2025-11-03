@@ -1,17 +1,17 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { CalculationInputs, CalculationResults } from './types';
-import { runCooldownSimulation } from './services/calculationService';
-import InputPanel from './components/InputPanel';
-import ResultsPanel from './components/ResultsPanel';
-import { initialInputs } from './constants';
-import ThemeToggle from './components/ThemeToggle';
-import NavBar from './components/NavBar';
-import DetailedResultsPage from './pages/DetailedResultsPage';
-import PrintButton from './components/PrintButton';
-import PrintReport from './components/PrintReport';
-import FeatureOverviewPage from './pages/FeatureOverviewPage';
-import OperatingGuidePage from './pages/OperatingGuidePage';
-import ContingencyGuidePage from './pages/ContingencyGuidePage';
+import { CalculationInputs, CalculationResults } from './types.ts';
+import { runCooldownSimulation } from './services/calculationService.ts';
+import InputPanel from './components/InputPanel.tsx';
+import ResultsPanel from './components/ResultsPanel.tsx';
+import { initialInputs } from './constants.ts';
+import ThemeToggle from './components/ThemeToggle.tsx';
+import NavBar from './components/NavBar.tsx';
+import DetailedResultsPage from './pages/DetailedResultsPage.tsx';
+import PrintButton from './components/PrintButton.tsx';
+import PrintReport from './components/PrintReport.tsx';
+import FeatureOverviewPage from './pages/FeatureOverviewPage.tsx';
+import OperatingGuidePage from './pages/OperatingGuidePage.tsx';
+import ContingencyGuidePage from './pages/ContingencyGuidePage.tsx';
 
 // Fix: Create a new type to represent form state, allowing empty strings for inputs.
 type FormInputs = { [K in keyof CalculationInputs]: CalculationInputs[K] | '' };

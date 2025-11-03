@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalculationInputs } from '../types';
+import { CalculationInputs } from '../types.ts';
 
 interface CalculationBasisPanelProps {
   inputs: CalculationInputs;

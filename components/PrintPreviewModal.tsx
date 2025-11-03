@@ -1,6 +1,6 @@
 import React from 'react';
 import { CalculationResults } from '../types';
-import PrintReport from './PrintReport';
+import PrintReport from './PrintReport.tsx';
 
 interface PrintPreviewModalProps {
   results: CalculationResults;

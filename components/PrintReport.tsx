@@ -1,9 +1,9 @@
 import React from 'react';
-import { CalculationResults } from '../types';
-import ResultsPanel from './ResultsPanel';
-import CalculationBasisPanel from './CalculationBasisPanel';
-import ReferenceEquationsPanel from './ReferenceEquationsPanel';
-import CalculatedValuesPanel from './CalculatedValuesPanel';
+import { CalculationResults } from '../types.ts';
+import ResultsPanel from './ResultsPanel.tsx';
+import CalculationBasisPanel from './CalculationBasisPanel.tsx';
+import ReferenceEquationsPanel from './ReferenceEquationsPanel.tsx';
+import CalculatedValuesPanel from './CalculatedValuesPanel.tsx';
 
 interface PrintReportProps {
   results: CalculationResults;

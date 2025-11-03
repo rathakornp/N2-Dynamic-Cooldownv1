@@ -1,9 +1,9 @@
 import React from 'react';
-import { CalculationResults } from '../types';
-import CalculatedValuesPanel from '../components/CalculatedValuesPanel';
-import CalculationBasisPanel from '../components/CalculationBasisPanel';
-import ReferenceEquationsPanel from '../components/ReferenceEquationsPanel';
-import N2ConsumptionBreakdownPanel from '../components/N2ConsumptionBreakdownPanel';
+import { CalculationResults } from '../types.ts';
+import CalculatedValuesPanel from '../components/CalculatedValuesPanel.tsx';
+import CalculationBasisPanel from '../components/CalculationBasisPanel.tsx';
+import ReferenceEquationsPanel from '../components/ReferenceEquationsPanel.tsx';
+import N2ConsumptionBreakdownPanel from '../components/N2ConsumptionBreakdownPanel.tsx';
 
 interface DetailedResultsPageProps {
   results: CalculationResults;
