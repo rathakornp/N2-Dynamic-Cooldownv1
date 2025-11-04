@@ -1,48 +1,37 @@
 import React from 'react';
-import { CalculationResults } from '../types.ts';
-import ResultsPanel from './ResultsPanel.tsx';
-import CalculationBasisPanel from './CalculationBasisPanel.tsx';
-import ReferenceEquationsPanel from './ReferenceEquationsPanel.tsx';
-import CalculatedValuesPanel from './CalculatedValuesPanel.tsx';
+import { CalculationResults, LngIntroductionResults } from '../types.ts';
+import LngPrintResults from './LngPrintResults.tsx';
+import CooldownPrintResults from './CooldownPrintResults.tsx';
+import DetailedResultsPrint from './DetailedResultsPrint.tsx';
 
 interface PrintReportProps {
   results: CalculationResults;
+  lngResults: LngIntroductionResults | null;
 }
 
-const PrintSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-    <fieldset className="border-t border-gray-300 pt-4">
-        <legend className="text-2xl font-bold text-gray-800 px-2">
-            {title}
-        </legend>
-        <div className="mt-6">
-            {children}
-        </div>
-    </fieldset>
-);
-
-
-const PrintReport: React.FC<PrintReportProps> = ({ results }) => {
+const PrintReport: React.FC<PrintReportProps> = ({ results, lngResults }) => {
   return (
-    <div className="space-y-12">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold">N₂ Pipeline Cooldown Simulation Report</h1>
+    <div className="p-10">
+      <div className="text-center mb-8 print-block">
+        <h1 className="text-3xl font-bold text-gray-900">N₂ Pipeline Cooldown Simulation Report</h1>
         <p className="text-md text-gray-600">Generated on: {new Date().toLocaleDateString()}</p>
       </div>
       
-      <ResultsPanel results={results} theme="light" isLoading={false} error={null} />
+      <CooldownPrintResults results={results} theme="light" />
       
-      <PrintSection title="Detailed Calculation Output">
-        <div className="space-y-10">
-          <CalculationBasisPanel inputs={results.inputs} />
-          <ReferenceEquationsPanel />
-          <div>
-              <h3 className="text-xl font-bold text-gray-800 border-b border-gray-300 pb-3 mb-6">
-                Calculated Properties
-              </h3>
-              <CalculatedValuesPanel results={results} />
-          </div>
+      <div className="pt-12">
+        <DetailedResultsPrint results={results} />
+      </div>
+      
+      {lngResults && (
+        <div className="pt-12">
+            <div className="text-center mb-8 print-block print-page-break">
+                <h1 className="text-3xl font-bold text-gray-900">LNG Introduction Simulation Report</h1>
+                 <p className="text-md text-gray-600">Generated on: {new Date().toLocaleDateString()}</p>
+            </div>
+            <LngPrintResults results={lngResults} theme="light" />
         </div>
-      </PrintSection>
+      )}
     </div>
   );
 };

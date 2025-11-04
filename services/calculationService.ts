@@ -211,8 +211,8 @@ export function runCooldownSimulation(
     
     const {
         pipeLength, pipeOD, pipeWT, pipeRoughness, initialTemp, targetTemp, ambientTemp, 
-        initialN2InletTemp, finalN2InletTemp, totalRampTimeHours,
-        intermediateRampTimeHours, intermediateN2Flow,
+        initialN2InletTemp, finalN2InletTemp, n2TempStepSizeC, n2TempHoldDurationHours,
+        flowRampTotalTimeHours, flowRampIntermediateTimeHours, intermediateN2Flow,
         initialN2Flow, maxN2Flow, insulationThickness, insulationKValue,
         extConvectionCoeff, emissivity, cooldownRateLimit, timeStepS,
         numberOfHolds, holdDurationHours,
@@ -275,19 +275,24 @@ export function runCooldownSimulation(
     });
     timeSeriesProfile.push({ time: 0, profile: pipeTempsC.map((temp, index) => ({ length_m: (index + 1) * segmentLength_m, temperature: temp })) });
 
-
     while (pipeTempsC[NUM_SEGMENTS - 1] > targetTemp && iteration < MAX_ITERATIONS) {
         iteration++;
         const prevOutletTempC = pipeTempsC[NUM_SEGMENTS - 1];
         const currentTimeHours = currentTimeS / 3600;
 
-        // --- New Dynamic N2 Inlet Temperature Logic ---
-        // N2 inlet temperature ramps down linearly over the same duration as the main flow ramp.
-        let currentN2InletTempC = finalN2InletTemp;
-        if (totalRampTimeHours > 0 && currentTimeHours < totalRampTimeHours) {
-            const rampProgress = currentTimeHours / totalRampTimeHours;
-            currentN2InletTempC = initialN2InletTemp + rampProgress * (finalN2InletTemp - initialN2InletTemp);
+        // --- New Step & Hold N2 Inlet Temperature Logic ---
+        let currentN2InletTempC;
+        if (n2TempStepSizeC <= 0 || n2TempHoldDurationHours <= 0) {
+            // If invalid inputs, jump to final temp. This is a failsafe.
+            currentN2InletTempC = finalN2InletTemp;
+        } else {
+            const numberOfStepsTaken = Math.floor(currentTimeHours / n2TempHoldDurationHours);
+            const tempDrop = numberOfStepsTaken * n2TempStepSizeC;
+            currentN2InletTempC = initialN2InletTemp - tempDrop;
         }
+        // Clamp to the final temperature to prevent overshooting and hold it there
+        currentN2InletTempC = Math.max(finalN2InletTemp, currentN2InletTempC);
+
 
         // --- Mixing Zone Logic ---
         const frontLeaderSegment = pipeVolumeInNm3 > 0 
@@ -381,15 +386,15 @@ export function runCooldownSimulation(
         });
         
         // --- N2 Flow Rate Controller (Two-Stage Linear Ramp) ---
-        if (totalRampTimeHours > 0 && currentTimeHours <= totalRampTimeHours) {
-            if (currentTimeHours <= intermediateRampTimeHours) {
+        if (flowRampTotalTimeHours > 0 && currentTimeHours <= flowRampTotalTimeHours) {
+            if (currentTimeHours <= flowRampIntermediateTimeHours) {
                 // Stage 1: Ramp from initial to intermediate flow
-                const rampProgress = intermediateRampTimeHours > 0 ? currentTimeHours / intermediateRampTimeHours : 1;
+                const rampProgress = flowRampIntermediateTimeHours > 0 ? currentTimeHours / flowRampIntermediateTimeHours : 1;
                 currentN2Flow_Nm3_h = initialN2Flow + rampProgress * (intermediateN2Flow - initialN2Flow);
             } else {
                 // Stage 2: Ramp from intermediate to max flow
-                const timeInStage2 = currentTimeHours - intermediateRampTimeHours;
-                const durationStage2 = totalRampTimeHours - intermediateRampTimeHours;
+                const timeInStage2 = currentTimeHours - flowRampIntermediateTimeHours;
+                const durationStage2 = flowRampTotalTimeHours - flowRampIntermediateTimeHours;
                 const rampProgress = durationStage2 > 0 ? timeInStage2 / durationStage2 : 1;
                 currentN2Flow_Nm3_h = intermediateN2Flow + rampProgress * (maxN2Flow - intermediateN2Flow);
             }
@@ -502,7 +507,6 @@ export function runCooldownSimulation(
         targetTemp: targetTemp,
         initialN2InletTemp,
         finalN2InletTemp,
-        totalRampTimeHours,
         chartData: chartData,
         temperatureProfile: finalTemperatureProfile,
         timeSeriesProfile: timeSeriesProfile,

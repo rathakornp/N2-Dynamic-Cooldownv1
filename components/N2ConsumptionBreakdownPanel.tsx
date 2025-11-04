@@ -21,19 +21,19 @@ const MetricRow: React.FC<{ label: string; value: string; unit: string; isSubTot
 
 const N2ConsumptionBreakdownPanel: React.FC<N2ConsumptionBreakdownPanelProps> = ({ results }) => {
     return (
-        <div>
+        <div className="print-block">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 border-b border-gray-200 dark:border-slate-700 pb-4">
                 N₂ Consumption Analysis
             </h2>
             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-8">
-                 <dl className="bg-gray-50 dark:bg-slate-800/50 p-4 rounded-lg shadow-inner">
+                 <dl className="bg-white dark:bg-slate-800/50 p-4 rounded-lg shadow-inner">
                     <MetricRow label="N₂ for Purge" value={formatNumber(results.n2ForPurgeNm3)} unit="Nm³" />
                     <MetricRow label="N₂ for Cooldown" value={formatNumber(results.n2ForCooldownNm3)} unit="Nm³" />
                     <MetricRow label="N₂ for Hold Periods" value={formatNumber(results.n2ForHoldsNm3)} unit="Nm³" />
                     <MetricRow label="N₂ for Preservation" value={formatNumber(results.n2ForPreservationNm3)} unit="Nm³" />
                     <MetricRow label="Sub-Total N₂" value={formatNumber(results.subTotalN2Nm3)} unit="Nm³" isSubTotal/>
                 </dl>
-                <dl className="bg-gray-50 dark:bg-slate-800/50 p-4 rounded-lg shadow-inner">
+                <dl className="bg-white dark:bg-slate-800/50 p-4 rounded-lg shadow-inner">
                     <MetricRow label="Sub-Total N₂" value={formatNumber(results.subTotalN2Nm3)} unit="Nm³" />
                     <MetricRow label={`Operational Margin (${results.inputs.operationalMarginPercent}%)`} value={formatNumber(results.operationalMarginNm3)} unit="Nm³" />
                     <MetricRow label="Grand Total N₂ Consumption" value={formatNumber(results.grandTotalN2Nm3)} unit="Nm³" isGrandTotal/>

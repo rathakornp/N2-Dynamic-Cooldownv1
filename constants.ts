@@ -1,4 +1,5 @@
-import { CalculationInputs } from './types';
+// Fix: Corrected import path for types.
+import { CalculationInputs } from './types.ts';
 
 export const initialInputs: CalculationInputs = {
   // Pipeline
@@ -15,8 +16,11 @@ export const initialInputs: CalculationInputs = {
   // N2 Vaporizer
   initialN2InletTemp: 15,   // °C
   finalN2InletTemp: -150,     // °C
-  totalRampTimeHours: 8,   // hours
-  intermediateRampTimeHours: 4, // hours
+  n2TempStepSizeC: 30,      // °C
+  n2TempHoldDurationHours: 1, // hours
+  
+  flowRampTotalTimeHours: 8,   // hours
+  flowRampIntermediateTimeHours: 4, // hours
   intermediateN2Flow: 3000, // Nm³/h
   initialN2Flow: 1000,    // Nm³/h
   maxN2Flow: 5000,        // Nm³/h
@@ -31,10 +35,10 @@ export const initialInputs: CalculationInputs = {
   holdDurationHours: 2,   
 
   // Purge, Preservation & Margin
-  purgeVolumes: 3,        // New
-  preservationDurationDays: 0, // New
-  preservationLeakRatePercentPerDay: 1, // New
-  operationalMarginPercent: 20, // New
+  purgeVolumes: 3,
+  preservationDurationDays: 0,
+  preservationLeakRatePercentPerDay: 1,
+  operationalMarginPercent: 20,
 
   // Simulation
   timeStepS: 60,          // seconds

@@ -1,28 +1,35 @@
 import React from 'react';
 import { CalculationResults, TimeSeriesProfilePoint } from '../types.ts';
+import N2ConsumptionBreakdownPanel from './N2ConsumptionBreakdownPanel.tsx';
 import { Area, AreaChart, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 
-interface ResultsPanelProps {
-  results: CalculationResults | null;
-  isLoading: boolean;
-  error: string | null;
-  theme: 'light' | 'dark';
-}
+// --- Chart Helper Components & Functions ---
 
 const formatNumber = (num: number | undefined, digits = 2) => {
     if (num === undefined || isNaN(num)) return 'N/A';
     return num.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
 };
 
-const CustomTooltip = ({ active, payload, label, yAxisLabel, xAxisLabel }: any) => {
+const CustomTooltip = ({ active, payload, label, yAxisLabel, xAxisLabel, theme }: any) => {
     if (active && payload && payload.length) {
         const unit = yAxisLabel.match(/\(([^)]+)\)/)?.[1] || '';
         const xUnit = xAxisLabel.match(/\(([^)]+)\)/)?.[1] || '';
+        const bgColor = theme === 'dark' ? 'rgba(40, 50, 70, 0.8)' : 'rgba(255, 255, 255, 0.8)';
+        const borderColor = theme === 'dark' ? '#475569' : '#E2E8F0';
+        const textColor = theme === 'dark' ? '#E2E8F0' : '#374151';
+
         return (
-            <div className="p-2 bg-white/80 dark:bg-slate-900/80 border border-gray-300 dark:border-slate-600 rounded-md shadow-lg backdrop-blur-sm">
-                <p className="label text-sm text-gray-700 dark:text-slate-200 font-semibold">{`${xAxisLabel.split(' ')[0]}: ${formatNumber(label, 2)} ${xUnit}`}</p>
+            <div style={{
+                padding: '8px',
+                backgroundColor: bgColor,
+                border: `1px solid ${borderColor}`,
+                borderRadius: '6px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                backdropFilter: 'blur(5px)',
+            }}>
+                <p style={{ color: textColor, fontWeight: '600', fontSize: '14px' }}>{`${xAxisLabel.split(' ')[0]}: ${formatNumber(label, 2)} ${xUnit}`}</p>
                 {payload.map((entry: any, index: number) => (
-                  <p key={`item-${index}`} className="intro text-sm" style={{ color: entry.color }}>
+                  <p key={`item-${index}`} className="intro text-sm" style={{ color: entry.color, fontSize: '14px' }}>
                       {`${entry.name}: ${formatNumber(entry.value, 2)} ${unit}`}
                   </p>
                 ))}
@@ -32,42 +39,22 @@ const CustomTooltip = ({ active, payload, label, yAxisLabel, xAxisLabel }: any) 
     return null;
 };
 
-
-const MetricCard: React.FC<{ title: string; value: string; unit: string; small?: boolean; valueClassName?: string }> = ({ title, value, unit, small = false, valueClassName }) => (
-    <div className={`bg-gray-100 dark:bg-slate-700 p-4 rounded-lg ${small ? 'text-center' : ''}`}>
-        <h3 className={`${small ? 'text-sm' : 'text-md'} font-medium text-gray-600 dark:text-slate-200`}>{title}</h3>
-        <p className={`${small ? 'text-xl' : 'text-2xl'} font-bold ${valueClassName || 'text-gray-900 dark:text-slate-100'}`}>
-            {value} <span className="text-base font-normal text-gray-500 dark:text-slate-200">{unit}</span>
-        </p>
-    </div>
-);
-
 const chartColors = {
     light: {
-        temperature: '#4F46E5',
-        n2Flow: '#7C3AED',
-        n2Accumulated: '#059669',
-        heatRemovedAccumulated: '#16A34A',
-        heatAddedAccumulated: '#EA580C',
-        q_accumulation: '#DC2626',
-        pressure_bar: '#D946EF', // fuchsia-500
-        q_removed: '#0E7490', // cyan-700
-        q_convection: '#38BDF8', // sky-400 (light blue)
-        q_radiation: '#D97706', // amber-600
+        temperature: '#4F46E5', n2Flow: '#7C3AED', n2Accumulated: '#059669',
+        heatRemovedAccumulated: '#16A34A', heatAddedAccumulated: '#EA580C',
+        q_accumulation: '#DC2626', pressure_bar: '#D946EF',
+        q_removed: '#0E7490', q_convection: '#38BDF8', q_radiation: '#D97706',
+        heatAddedConvectionAccumulated: '#38BDF8', heatAddedRadiationAccumulated: '#D97706',
     },
-    dark: {
-        temperature: '#818CF8', // indigo-400
-        n2Flow: '#F472B6', // pink-400
-        n2Accumulated: '#34D399', // emerald-400
-        heatRemovedAccumulated: '#4ADE80', // green-400
-        heatAddedAccumulated: '#FB923C', // orange-400
-        q_accumulation: '#F87171', // red-400
-        pressure_bar: '#F0ABFC', // fuchsia-300
-        q_removed: '#67E8F9', // cyan-300
-        q_convection: '#7DD3FC', // sky-300 (light blue)
-        q_radiation: '#FDBA74', // orange-300
+    dark: { 
+        temperature: '#818CF8', n2Flow: '#F472B6', n2Accumulated: '#34D399',
+        heatRemovedAccumulated: '#4ADE80', heatAddedAccumulated: '#FB923C',
+        q_accumulation: '#F87171', pressure_bar: '#F0ABFC', q_removed: '#67E8F9',
+        q_convection: '#7DD3FC', q_radiation: '#FDBA74',
+        heatAddedConvectionAccumulated: '#7DD3FC', heatAddedRadiationAccumulated: '#FDBA74'
     }
-}
+};
 
 const SingleMetricChart: React.FC<{
     data: any[];
@@ -76,62 +63,35 @@ const SingleMetricChart: React.FC<{
     yAxisLabel: string;
     theme: 'light' | 'dark';
     referenceLine?: { y: number; label: string };
-    totalTime: number;
-}> = ({ data, dataKey, title, yAxisLabel, theme, referenceLine, totalTime }) => {
-    const gridStrokeColor = theme === 'dark' ? '#475569' : '#E2E8F0'; // slate-600 / slate-200
-    const textColor = theme === 'dark' ? '#E2E8F0' : '#374151'; // slate-200 / gray-700
+}> = ({ data, dataKey, title, yAxisLabel, theme, referenceLine }) => {
+    const gridStrokeColor = theme === 'dark' ? '#475569' : '#E2E8F0';
+    const textColor = theme === 'dark' ? '#E2E8F0' : '#374151';
     const strokeColor = chartColors[theme][dataKey] || '#8884d8';
-    const refLineColor = theme === 'dark' ? '#F87171' : '#EF4444'; // red-400 / red-500
+    const refLineColor = theme === 'dark' ? '#F87171' : '#EF4444';
     const lineName = title.split(' vs.')[0];
     const xAxisLabel = "Time (hr)";
 
-    const generateTicks = (maxTime: number) => {
-        const ticks = [];
-        const roundedMax = Math.ceil(maxTime * 2) / 2;
-        for (let i = 0; i <= roundedMax; i += 0.5) { ticks.push(i); }
-        if (ticks.length < 2 && roundedMax > 0) { return [0, roundedMax]; }
-        if (ticks.length < 2) { return [0, 0.5]; }
-        return ticks;
-    };
-    const xTicks = generateTicks(totalTime);
-
     return (
-        <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg shadow-inner">
+        <div className="bg-gray-50 dark:bg-slate-900/50 p-4 rounded-lg shadow-inner">
             <h3 className="text-md font-semibold text-gray-800 dark:text-slate-100 mb-4 text-center">{title}</h3>
-            <div className="h-80">
+            <div className="h-96">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={data} margin={{ top: 5, right: 20, left: 25, bottom: 25 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke={gridStrokeColor} />
                         <XAxis 
-                            type="number"
-                            dataKey="time" 
-                            stroke={textColor} 
-                            tick={{ fontSize: 12 }}
+                            type="number" dataKey="time" stroke={textColor} tick={{ fontSize: 12 }}
                             tickFormatter={(value) => formatNumber(value, 1)}
                             label={{ value: xAxisLabel, position: 'insideBottom', dy: 10, fill: textColor, fontSize: 14 }}
-                            domain={[0, totalTime]}
-                            allowDataOverflow={true}
-                            ticks={xTicks}
+                            domain={[0, 'dataMax']} allowDataOverflow={true}
                         />
                         <YAxis 
                             label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', fill: textColor, fontSize: 14 }} 
-                            stroke={textColor} 
-                            tick={{ fontSize: 12 }}
-                            tickFormatter={(value) => typeof value === 'number' ? formatNumber(value, 1) : value}
+                            stroke={textColor} tick={{ fontSize: 12 }}
                         />
-                        <Tooltip
-                            content={<CustomTooltip yAxisLabel={yAxisLabel} xAxisLabel={xAxisLabel} />}
-                        />
-                        <Legend verticalAlign="top" height={36} wrapperStyle={{fontSize: "14px"}}/>
+                        <Tooltip content={<CustomTooltip yAxisLabel={yAxisLabel} xAxisLabel={xAxisLabel} theme={theme} />} />
+                        <Legend verticalAlign="top" height={36} wrapperStyle={{fontSize: "14px", color: textColor}}/>
                         <Line type="monotone" dataKey={dataKey} name={lineName} stroke={strokeColor} dot={false} strokeWidth={2} />
-                        {referenceLine && (
-                            <ReferenceLine 
-                                y={referenceLine.y} 
-                                label={{ value: referenceLine.label, position: 'right', fill: refLineColor, fontSize: 12 }} 
-                                stroke={refLineColor} 
-                                strokeDasharray="4 4" 
-                            />
-                        )}
+                        {referenceLine && <ReferenceLine y={referenceLine.y} label={{ value: referenceLine.label, position: 'right', fill: refLineColor, fontSize: 12 }} stroke={refLineColor} strokeDasharray="4 4" />}
                     </LineChart>
                 </ResponsiveContainer>
             </div>
@@ -141,34 +101,29 @@ const SingleMetricChart: React.FC<{
 
 const DYNAMIC_CHART_PALETTE = [
   '#FF6B6B', '#4ECDC4', '#45B7D1', '#FED766', '#726DA8', '#F7B801', '#5B5F97', '#FFC154',
-  '#A6D854', '#FFD92F', '#E78AC3', '#66C2A5', '#FC8D62', '#8DA0CB', '#E5C494', '#B3B3B3',
-  '#8DD3C7', '#FFFFB3', '#BEBADA', '#FB8072', '#80B1D3', '#FDB462', '#B3DE69', '#FCCDE5',
-  '#BC80BD', '#CCEBC5', '#FFED6F', '#7E57C2', '#26A69A', '#FF7043', '#D4E157', '#5C6BC0'
+  '#A6D854', '#FFD92F', '#E78AC3', '#66C2A5', '#FC8D62', '#8DA0CB', '#E5C494', '#B3B3B3'
 ];
 
 const DynamicProfileChart: React.FC<{
     data: TimeSeriesProfilePoint[];
     targetTemp: number;
     title: string;
-    theme: 'light' | 'dark';
     pipeLength: number;
-}> = ({ data, targetTemp, title, theme, pipeLength }) => {
+    theme: 'light' | 'dark';
+}> = ({ data, targetTemp, title, pipeLength, theme }) => {
     const gridStrokeColor = theme === 'dark' ? '#475569' : '#E2E8F0';
-    const textColor = theme === 'dark' ? '#E2E8F0' : '#374151'; // slate-200 / gray-700
+    const textColor = theme === 'dark' ? '#E2E8F0' : '#374151';
     const refLineColor = theme === 'dark' ? '#F87171' : '#EF4444';
     const yAxisLabel = "Pipe Skin Temperature (°C)";
     const xAxisLabel = "Pipeline Length (m)";
 
     const [pivotedData, timeKeys] = React.useMemo(() => {
         if (!data || data.length === 0) return [[], []];
-
         const pivotedMap: Map<number, any> = new Map();
         const timeKeys = new Set<string>();
-
         data.forEach(({ time, profile }) => {
             const timeKey = `${Math.round(time)} HR`;
             timeKeys.add(timeKey);
-
             profile.forEach(({ length_m, temperature }) => {
                 if (!pivotedMap.has(length_m)) {
                     pivotedMap.set(length_m, { length_m });
@@ -177,72 +132,40 @@ const DynamicProfileChart: React.FC<{
                 point[timeKey] = temperature;
             });
         });
-
         const sortedData = Array.from(pivotedMap.values()).sort((a, b) => a.length_m - b.length_m);
         return [sortedData, Array.from(timeKeys)];
     }, [data]);
 
-
     return (
-        <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg shadow-inner">
+        <div className="bg-gray-50 dark:bg-slate-900/50 p-4 rounded-lg shadow-inner">
             <h3 className="text-md font-semibold text-gray-800 dark:text-slate-100 mb-4 text-center">{title}</h3>
             <div style={{width: '100%', height: '40rem'}}>
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={pivotedData} margin={{ top: 5, right: 30, left: 25, bottom: 120 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke={gridStrokeColor} />
                         <XAxis 
-                            type="number"
-                            dataKey="length_m" 
-                            stroke={textColor} 
-                            tick={{ fontSize: 12 }}
+                            type="number" dataKey="length_m" stroke={textColor} tick={{ fontSize: 12 }}
                             tickFormatter={(value) => formatNumber(value, 0)}
                             label={{ value: xAxisLabel, position: 'insideBottom', dy: 10, fill: textColor, fontSize: 14 }}
                             domain={[0, pipeLength]}
                         />
                         <YAxis 
                             label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', fill: textColor, fontSize: 14, dx: -10 }} 
-                            stroke={textColor} 
-                            tick={{ fontSize: 12 }}
-                            tickFormatter={(value) => typeof value === 'number' ? formatNumber(value, 0) : value}
-                            domain={['auto', 'auto']}
+                            stroke={textColor} tick={{ fontSize: 12 }}
                         />
                         <Tooltip
-                             formatter={(value: number, name: string) => [`${formatNumber(value, 1)} °C`, name]}
-                             labelFormatter={(label: number) => `Length: ${formatNumber(label, 0)} m`}
                              contentStyle={{
                                 backgroundColor: theme === 'dark' ? 'rgba(40, 50, 70, 0.8)' : 'rgba(255, 255, 255, 0.8)',
-                                backdropFilter: 'blur(5px)',
-                                border: `1px solid ${gridStrokeColor}`
+                                backdropFilter: 'blur(5px)', border: `1px solid ${gridStrokeColor}`
                              }}
                         />
-                        <Legend 
-                          verticalAlign="bottom" 
-                          wrapperStyle={{
-                            fontSize: "12px",
-                            paddingTop: '20px',
-                            width: '100%',
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            justifyContent: 'center',
-                          }}
-                        />
+                        <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: '20px' }} />
                         {timeKeys.map((key, index) => (
-                          <Line 
-                            key={key}
-                            type="monotone" 
-                            dataKey={key} 
-                            name={key}
+                          <Line key={key} type="monotone" dataKey={key} name={key}
                             stroke={DYNAMIC_CHART_PALETTE[index % DYNAMIC_CHART_PALETTE.length]}
-                            dot={false}
-                            strokeWidth={1.5} 
-                          />
+                            dot={false} strokeWidth={1.5} />
                         ))}
-                         <ReferenceLine 
-                            y={targetTemp} 
-                            label={{ value: `Target: ${targetTemp}°C`, position: 'insideTopRight', fill: refLineColor, fontSize: 12 }} 
-                            stroke={refLineColor} 
-                            strokeDasharray="4 4" 
-                        />
+                         <ReferenceLine y={targetTemp} label={{ value: `Target: ${targetTemp}°C`, position: 'insideTopRight', fill: refLineColor, fontSize: 12 }} stroke={refLineColor} strokeDasharray="4 4" />
                     </LineChart>
                 </ResponsiveContainer>
             </div>
@@ -250,234 +173,174 @@ const DynamicProfileChart: React.FC<{
     );
 };
 
+// --- Main Panel Component ---
+
+interface ResultsPanelProps {
+  results: CalculationResults | null;
+  isLoading: boolean;
+  error: string | null;
+  theme: 'light' | 'dark';
+}
+
+const MetricCard: React.FC<{ title: string; value: string; unit: string; valueClassName?: string; small?: boolean }> = ({ title, value, unit, valueClassName, small = false }) => (
+    <div className="bg-gray-100/50 dark:bg-slate-700/50 p-4 rounded-lg shadow-sm">
+        <h3 className={`${small ? 'text-sm' : 'text-md'} font-medium text-gray-600 dark:text-slate-200`}>{title}</h3>
+        <p className={`${small ? 'text-2xl' : 'text-3xl'} font-bold ${valueClassName || 'text-gray-900 dark:text-slate-100'}`}>
+            {value} <span className="text-base font-normal text-gray-500 dark:text-slate-200">{unit}</span>
+        </p>
+    </div>
+);
+
+const N2ConsumptionMetricCard: React.FC<{ title: string; value: string; unit: string; }> = ({ title, value, unit }) => (
+    <div className="bg-gray-100/50 dark:bg-slate-700/50 p-3 rounded-lg text-center">
+        <h3 className="text-sm font-medium text-gray-600 dark:text-slate-200">{title}</h3>
+        <p className="text-xl font-bold text-gray-900 dark:text-slate-100">
+            {value} <span className="text-sm font-normal text-gray-500 dark:text-slate-200">{unit}</span>
+        </p>
+    </div>
+);
+
 
 const ResultsPanel: React.FC<ResultsPanelProps> = ({ results, isLoading, error, theme }) => {
-    
-    if (isLoading) {
-        return (
-            <div className="p-6 h-full flex items-center justify-center">
-                <div className="text-center">
-                     <svg className="animate-spin mx-auto h-12 w-12 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <p className="mt-4 text-lg font-semibold">Running simulation...</p>
-                </div>
-            </div>
-        );
-    }
-    
-    if (error) {
-         return (
-            <div className="p-6 h-full flex items-center justify-center">
-                <div className="text-center text-red-500 dark:text-red-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <h3 className="text-xl font-bold mt-4">Calculation Error</h3>
-                    <p className="mt-2">{error}</p>
-                </div>
-            </div>
-        );
-    }
-    
-    if (!results) {
-        return (
-            <div className="p-6 h-full flex items-center justify-center">
-                <div className="text-center">
-                    <h2 className="text-xl font-semibold text-gray-700 dark:text-slate-300">Awaiting Calculation</h2>
-                    <p className="mt-2 text-gray-500 dark:text-slate-400">Enter your parameters and click "Calculate Cooldown" to see the results.</p>
-                </div>
-            </div>
-        );
-    }
-
-    const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-        <fieldset className="border-t border-gray-200 dark:border-slate-700 pt-4">
-            <legend className="text-lg font-semibold text-gray-900 dark:text-slate-100 px-2">{title}</legend>
-            <div className="mt-4">
-                {children}
-            </div>
-        </fieldset>
-    );
-    
-    const gridStrokeColor = theme === 'dark' ? '#475569' : '#E2E8F0';
-    const textColor = theme === 'dark' ? '#E2E8F0' : '#374151';
-
-    const peakRate = results.peakCooldownRate;
-    const cooldownRateColorClass = peakRate > 30 
-        ? 'text-red-500 dark:text-red-400' 
-        : 'text-green-600 dark:text-green-400';
-
+  if (isLoading) {
     return (
-        <div className="p-6 space-y-8">
-            <div>
-                <Section title="Overview Summary">
-                    <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
-                        <MetricCard title="Cooldown Time" value={formatNumber(results.totalTimeHours)} unit="hours" />
-                        <MetricCard 
-                            title="Peak Cooldown Rate" 
-                            value={formatNumber(peakRate, 1)} 
-                            unit="°C/hr" 
-                            valueClassName={cooldownRateColorClass}
-                        />
-                    </div>
-                </Section>
-                <Section title="N₂ Consumption Breakdown">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                       <MetricCard title="N₂ for Purge" value={formatNumber(results.n2ForPurgeNm3, 0)} unit="Nm³" small/>
-                       <MetricCard title="N₂ for Cooldown" value={formatNumber(results.n2ForCooldownNm3, 0)} unit="Nm³" small/>
-                       <MetricCard title="N₂ for Hold Periods" value={formatNumber(results.n2ForHoldsNm3, 0)} unit="Nm³" small/>
-                       <MetricCard title="N₂ for Preservation" value={formatNumber(results.n2ForPreservationNm3, 0)} unit="Nm³" small/>
-                    </div>
-                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <MetricCard title="Sub-Total N₂" value={formatNumber(results.subTotalN2Nm3, 0)} unit="Nm³" />
-                        <MetricCard title="Operational Margin" value={formatNumber(results.operationalMarginNm3, 0)} unit={`Nm³ (${results.inputs.operationalMarginPercent}%)`} />
-                    </div>
-                    <div className="mt-4 bg-indigo-50 dark:bg-indigo-900/40 p-4 rounded-lg border border-indigo-200 dark:border-indigo-700">
-                         <MetricCard 
-                            title="Grand Total N₂ Consumption" 
-                            value={formatNumber(results.grandTotalN2Nm3, 0)} 
-                            unit="Nm³" 
-                            valueClassName="text-indigo-600 dark:text-indigo-300"
-                        />
-                    </div>
-                </Section>
-                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4 mt-6">
-                    <Section title="Heat Ingress Summary">
-                         <div className="grid grid-cols-1 gap-4">
-                            <MetricCard title="Total Heat Ingress" value={formatNumber(results.totalHeatIngressMJ)} unit="MJ" small />
-                            <MetricCard title="Convective Ingress" value={formatNumber(results.totalHeatIngressConvectionMJ)} unit="MJ" small/>
-                            <MetricCard title="Radiative Ingress" value={formatNumber(results.totalHeatIngressRadiationMJ)} unit="MJ" small/>
-                        </div>
-                    </Section>
+      <div className="p-12 h-full flex items-center justify-center">
+        <div className="flex items-center space-x-3">
+          <svg className="animate-spin h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span className="text-xl text-gray-700 dark:text-slate-200">Running simulation...</span>
+        </div>
+      </div>
+    );
+  }
 
-                    <Section title="N₂ Cooldown Heat Removal">
-                        <div className="grid grid-cols-1 gap-4">
-                            <MetricCard title="Total Heat Removed" value={formatNumber(results.totalHeatRemovedMJ)} unit="MJ" small/>
-                            <MetricCard title="Peak Cooling Power" value={formatNumber(results.peakHeatRemovalkW)} unit="kW" small/>
-                        </div>
-                    </Section>
-                    
-                    <Section title="Pipe Summary">
-                        <div className="grid grid-cols-1 gap-4">
-                            <MetricCard title="Pipe Mass" value={formatNumber(results.pipeMass, 0)} unit="kg" small/>
-                            <MetricCard title="Pipeline Volume" value={formatNumber(results.pipeVolume, 2)} unit="m³" small/>
-                            <MetricCard title="Pipe Cross-Section Area" value={formatNumber(results.pipeCrossSectionArea * 10000, 1)} unit="cm²" small/>
-                        </div>
-                    </Section>
-                </div>
+  if (error) {
+    return (
+      <div className="p-12 h-full flex items-center justify-center">
+        <div className="bg-red-50 dark:bg-red-900/40 border-l-4 border-red-400 p-6 rounded-r-lg">
+          <h3 className="text-lg font-bold text-red-800 dark:text-red-200">Calculation Error</h3>
+          <p className="mt-2 text-red-700 dark:text-red-300">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!results) {
+    return (
+      <div className="p-12 h-full flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold text-gray-700 dark:text-slate-300">Awaiting Calculation</h2>
+          <p className="mt-2 text-gray-500 dark:text-slate-400">Enter your pipeline parameters and click "Calculate Cooldown" to see the results.</p>
+        </div>
+      </div>
+    );
+  }
+  
+  const peakRate = results.peakCooldownRate;
+  const cooldownRateLimit = results.inputs.cooldownRateLimit;
+  const isRateSafe = peakRate <= cooldownRateLimit;
+  const cooldownRateColorClass = isRateSafe 
+    ? 'text-green-600 dark:text-green-400' 
+    : 'text-red-500 dark:text-red-400';
+
+  return (
+    <div className="p-8 space-y-12">
+      
+      {/* --- START: New Summary Dashboard --- */}
+      <div className="space-y-8">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">
+            Overview Summary
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <MetricCard title="Cooldown Time" value={formatNumber(results.totalTimeHours)} unit="hours" />
+              <MetricCard 
+                title="Peak Cooldown Rate" 
+                value={formatNumber(peakRate, 1)} 
+                unit={`°C/hr`}
+                valueClassName={cooldownRateColorClass}
+              />
+          </div>
+      </div>
+      
+      <div className="space-y-8">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">
+            N₂ Consumption Breakdown
+          </h2>
+           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+               <N2ConsumptionMetricCard title="N₂ for Purge" value={formatNumber(results.n2ForPurgeNm3, 0)} unit="Nm³" />
+               <N2ConsumptionMetricCard title="N₂ for Cooldown" value={formatNumber(results.n2ForCooldownNm3, 0)} unit="Nm³" />
+               <N2ConsumptionMetricCard title="N₂ for Hold Periods" value={formatNumber(results.n2ForHoldsNm3, 0)} unit="Nm³" />
+               <N2ConsumptionMetricCard title="N₂ for Preservation" value={formatNumber(results.n2ForPreservationNm3, 0)} unit="Nm³" />
+          </div>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <MetricCard title="Sub-Total N₂" value={formatNumber(results.subTotalN2Nm3, 0)} unit="Nm³" />
+              <MetricCard title="Operational Margin" value={formatNumber(results.operationalMarginNm3, 0)} unit={`Nm³ (${results.inputs.operationalMarginPercent}%)`} />
+          </div>
+          <div className="bg-indigo-100 dark:bg-indigo-900/30 p-4 rounded-lg border border-indigo-200 dark:border-indigo-800">
+               <MetricCard 
+                  title="Grand Total N₂ Consumption" 
+                  value={formatNumber(results.grandTotalN2Nm3, 0)} 
+                  unit="Nm³" 
+                  valueClassName="text-indigo-600 dark:text-indigo-300"
+              />
+          </div>
+      </div>
+
+       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+            <div className="space-y-4">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-slate-100">Heat Ingress Summary</h2>
+                <MetricCard title="Total Heat Ingress" value={formatNumber(results.totalHeatIngressMJ)} unit="MJ" small />
+                <MetricCard title="Convective Ingress" value={formatNumber(results.totalHeatIngressConvectionMJ)} unit="MJ" small />
+                <MetricCard title="Radiative Ingress" value={formatNumber(results.totalHeatIngressRadiationMJ)} unit="MJ" small />
             </div>
-
-            <div className="grid grid-cols-1 gap-8">
-                <DynamicProfileChart 
-                    data={results.timeSeriesProfile}
-                    targetTemp={results.targetTemp}
-                    title="Dynamic Cooldown Temperature Profile"
-                    theme={theme}
-                    pipeLength={results.pipeLength}
-                />
-                <SingleMetricChart 
-                    data={results.chartData}
-                    dataKey="temperature"
-                    title="Pipe Wall Skin Temperature vs. Time"
-                    yAxisLabel="Temperature (°C)"
-                    theme={theme}
-                    totalTime={results.totalTimeHours}
-                />
-                 <SingleMetricChart 
-                    data={results.chartData}
-                    dataKey="n2Flow"
-                    title="Nitrogen Flow Rate vs. Time"
-                    yAxisLabel="N₂ Flow (Nm³/h)"
-                    theme={theme}
-                    referenceLine={{ y: results.maxN2Flow, label: `Max: ${results.maxN2Flow}` }}
-                    totalTime={results.totalTimeHours}
-                />
-                 <SingleMetricChart 
-                    data={results.chartData}
-                    dataKey="n2Accumulated"
-                    title="Accumulated N₂ Consumption vs. Time"
-                    yAxisLabel="Total N₂ (Nm³)"
-                    theme={theme}
-                    totalTime={results.totalTimeHours}
-                />
-                 <SingleMetricChart 
-                    data={results.chartData}
-                    dataKey="pressure_bar"
-                    title="Pipeline Inlet Pressure vs. Time"
-                    yAxisLabel="Inlet Pressure (bara)"
-                    theme={theme}
-                    totalTime={results.totalTimeHours}
-                />
-                <SingleMetricChart 
-                    data={results.chartData}
-                    dataKey="heatRemovedAccumulated"
-                    title="Accumulated Heat Removed by N₂ vs. Time"
-                    yAxisLabel="Energy (MJ)"
-                    theme={theme}
-                    totalTime={results.totalTimeHours}
-                />
-                <SingleMetricChart 
-                    data={results.chartData}
-                    dataKey="heatAddedAccumulated"
-                    title="Accumulated Heat Ingress vs. Time"
-                    yAxisLabel="Energy (MJ)"
-                    theme={theme}
-                    totalTime={results.totalTimeHours}
-                />
-                <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg shadow-inner">
-                    <h3 className="text-md font-semibold text-gray-800 dark:text-slate-100 mb-4 text-center">Accumulated Heat Ingress Components vs. Time</h3>
-                    <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={results.chartData} margin={{ top: 5, right: 20, left: 25, bottom: 25 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke={gridStrokeColor} />
-                                <XAxis 
-                                    type="number"
-                                    dataKey="time" 
-                                    stroke={textColor} 
-                                    tick={{ fontSize: 12 }}
-                                    tickFormatter={(value) => formatNumber(value, 1)}
-                                    label={{ value: "Time (hr)", position: 'insideBottom', dy: 10, fill: textColor, fontSize: 14 }}
-                                    domain={[0, results.totalTimeHours]}
-                                    allowDataOverflow={true}
-                                />
-                                <YAxis 
-                                    label={{ value: "Energy (MJ)", angle: -90, position: 'insideLeft', fill: textColor, fontSize: 14 }} 
-                                    stroke={textColor} 
-                                    tick={{ fontSize: 12 }}
-                                    tickFormatter={(value) => typeof value === 'number' ? formatNumber(value, 1) : value}
-                                />
-                                <Tooltip
-                                    content={<CustomTooltip yAxisLabel={"Energy (MJ)"} xAxisLabel={"Time (hr)"} />}
-                                />
-                                <Legend verticalAlign="top" height={36} wrapperStyle={{fontSize: "14px"}}/>
-                                <Area 
-                                    type="monotone" 
-                                    dataKey="heatAddedConvectionAccumulated" 
-                                    name="Convective" 
-                                    stackId="1" 
-                                    stroke={chartColors[theme].q_convection} 
-                                    fill={chartColors[theme].q_convection} 
-                                    fillOpacity={0.6}
-                                />
-                                <Area 
-                                    type="monotone" 
-                                    dataKey="heatAddedRadiationAccumulated" 
-                                    name="Radiative" 
-                                    stackId="1" 
-                                    stroke={chartColors[theme].q_radiation} 
-                                    fill={chartColors[theme].q_radiation}
-                                    fillOpacity={0.6}
-                                />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
+            <div className="space-y-4">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-slate-100">N₂ Cooldown Heat Removal</h2>
+                <MetricCard title="Total Heat Removed" value={formatNumber(results.totalHeatRemovedMJ)} unit="MJ" small />
+                <MetricCard title="Peak Cooling Power" value={formatNumber(results.peakHeatRemovalkW)} unit="kW" small />
+            </div>
+            <div className="space-y-4">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-slate-100">Pipe Summary</h2>
+                <MetricCard title="Pipe Mass" value={formatNumber(results.pipeMass, 0)} unit="kg" small />
+                <MetricCard title="Pipeline Volume" value={formatNumber(results.pipeVolume)} unit="m³" small />
+                <MetricCard title="Pipe Cross-Section Area" value={formatNumber(results.pipeCrossSectionArea * 10000, 1)} unit="cm²" small />
+            </div>
+       </div>
+       {/* --- END: New Summary Dashboard --- */}
+      
+      <div className="space-y-4 pt-8">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 border-b border-gray-200 dark:border-slate-700 pb-4">
+            Simulation Charts
+        </h2>
+        <div className="grid grid-cols-1 gap-8">
+            <DynamicProfileChart data={results.timeSeriesProfile} targetTemp={results.targetTemp} title="Dynamic Cooldown Temperature Profile" pipeLength={results.pipeLength} theme={theme} />
+            <SingleMetricChart data={results.chartData} dataKey="temperature" title="Pipe Wall Skin Temperature vs. Time" yAxisLabel="Temperature (°C)" theme={theme} />
+            <SingleMetricChart data={results.chartData} dataKey="n2Flow" title="Nitrogen Flow Rate vs. Time" yAxisLabel="N₂ Flow (Nm³/h)" theme={theme} referenceLine={{ y: results.maxN2Flow, label: `Max: ${results.maxN2Flow}` }} />
+            <SingleMetricChart data={results.chartData} dataKey="n2Accumulated" title="Accumulated N₂ Consumption vs. Time" yAxisLabel="Total N₂ (Nm³)" theme={theme} />
+            <SingleMetricChart data={results.chartData} dataKey="pressure_bar" title="Pipeline Inlet Pressure vs. Time" yAxisLabel="Inlet Pressure (bara)" theme={theme} />
+            <SingleMetricChart data={results.chartData} dataKey="heatRemovedAccumulated" title="Accumulated Heat Removed by N₂ vs. Time" yAxisLabel="Energy (MJ)" theme={theme} />
+            <SingleMetricChart data={results.chartData} dataKey="heatAddedAccumulated" title="Accumulated Heat Ingress vs. Time" yAxisLabel="Energy (MJ)" theme={theme} />
+            <div className="bg-gray-50 dark:bg-slate-900/50 p-4 rounded-lg shadow-inner">
+                <h3 className="text-md font-semibold text-gray-800 dark:text-slate-100 mb-4 text-center">Accumulated Heat Ingress Components vs. Time</h3>
+                <div className="h-96">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={results.chartData} margin={{ top: 5, right: 20, left: 25, bottom: 25 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#475569' : '#E2E8F0'} />
+                            <XAxis type="number" dataKey="time" stroke={theme === 'dark' ? '#E2E8F0' : '#374151'} tick={{ fontSize: 12 }} label={{ value: "Time (hr)", position: 'insideBottom', dy: 10, fill: theme === 'dark' ? '#E2E8F0' : '#374151' }} />
+                            <YAxis label={{ value: "Energy (MJ)", angle: -90, position: 'insideLeft', fill: theme === 'dark' ? '#E2E8F0' : '#374151' }} stroke={theme === 'dark' ? '#E2E8F0' : '#374151'} tick={{ fontSize: 12 }} />
+                            <Tooltip content={<CustomTooltip yAxisLabel={"Energy (MJ)"} xAxisLabel={"Time (hr)"} theme={theme}/>} />
+                            <Legend verticalAlign="top" height={36} wrapperStyle={{fontSize: "14px", color: theme === 'dark' ? '#E2E8F0' : '#374151' }}/>
+                            <Area type="monotone" dataKey="heatAddedConvectionAccumulated" name="Convective" stackId="1" stroke={chartColors[theme].heatAddedConvectionAccumulated} fill={chartColors[theme].heatAddedConvectionAccumulated} fillOpacity={0.6} />
+                            <Area type="monotone" dataKey="heatAddedRadiationAccumulated" name="Radiative" stackId="1" stroke={chartColors[theme].heatAddedRadiationAccumulated} fill={chartColors[theme].heatAddedRadiationAccumulated} fillOpacity={0.6} />
+                        </AreaChart>
+                    </ResponsiveContainer>
                 </div>
             </div>
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
 export default ResultsPanel;

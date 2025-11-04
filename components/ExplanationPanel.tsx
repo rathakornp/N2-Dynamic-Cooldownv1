@@ -17,14 +17,19 @@ const ExplanationPanel: React.FC<ExplanationPanelProps> = ({ results, theme }) =
     setError(null);
     setExplanation('');
 
+    // Fix: Corrected the prompt to be more accurate about the control strategy (flow ramp vs. temperature stepping)
+    // and fixed property access for total ramp time. Using grand total N2 for consistency.
     const prompt = `
       Act as an expert process engineer analyzing a pipeline cooldown simulation.
       The model is a 1D segmented simulation showing temperature profiles along the pipe at hourly intervals.
       Based on the following summary, provide a concise, easy-to-understand explanation of the cooldown process.
       
-      1.  **Overall Dynamics & Control Strategy**: Start with the big picture. The cooldown took ${results.totalTimeHours.toFixed(2)} hours and consumed ${results.totalN2Nm3.toFixed(0)} Nm³ of nitrogen. Crucially, this was a highly controlled process. The simulation models a realistic operator strategy where the N₂ inlet temperature was gradually ramped down from an initial ${results.initialN2InletTemp}°C to a final ${results.finalN2InletTemp}°C over ${results.totalRampTimeHours} hours. Explain that this, combined with controlling the flow rate to respect a ${results.cooldownRateLimit}°C/hr limit, ensures a safe, shock-free cooldown.
+      1.  **Overall Dynamics & Control Strategy**: Start with the big picture. The cooldown took ${results.totalTimeHours.toFixed(2)} hours and consumed ${results.grandTotalN2Nm3.toFixed(0)} Nm³ of nitrogen. This was a highly controlled process. The simulation models a realistic operator strategy with two key controls:
+          - The N₂ flow rate was gradually ramped up to its maximum over ${results.inputs.flowRampTotalTimeHours.toFixed(1)} hours.
+          - Simultaneously, the N₂ inlet temperature was controlled using a 'step-and-hold' procedure: the temperature was lowered by ${results.inputs.n2TempStepSizeC}°C, held for ${results.inputs.n2TempHoldDurationHours} hour(s), and this cycle was repeated until the final temperature of ${results.finalN2InletTemp}°C was reached.
+        Explain that this dual-control approach, combined with respecting a ${results.cooldownRateLimit}°C/hr limit, ensures a safe, shock-free cooldown.
 
-      2.  **Initial Cooldown & The Mixing Zone (Hours 1-${results.totalRampTimeHours})**: This is the most critical phase. Explain that the gentle temperature drop at the pipe inlet during these first hours is a direct result of the N₂ temperature ramp-down. Simultaneously, a "thermal front" forms where the incoming cold N₂ mixes with the resident warm gas (${results.pipeVolumeInNm3.toFixed(1)} Nm³), which must be displaced. Explain how this mixing and the gentle temperature ramp create the smooth, realistic temperature profiles seen in the first few hours.
+      2.  **Initial Cooldown & The Mixing Zone**: This is the most critical phase. Explain that the distinct 'staircase' temperature drop seen at the pipe inlet during the first few hours is a direct result of the N₂ 'step-and-hold' temperature control. Simultaneously, a "thermal front" forms where the incoming cold N₂ mixes with the resident warm gas (${results.pipeVolumeInNm3.toFixed(1)} Nm³), which must be displaced. Explain how this mixing and the gentle step-down create the smooth, realistic temperature profiles seen in the first few hours.
 
       3.  **Temperature Profile Evolution (The "Cold Wave")**: After the initial phase, describe how this thermal front, or "wave of cold," progresses down the pipeline in the hourly snapshots. Explain why the inlet is always coldest and the outlet is warmest. This is the core of the 1D model: as the nitrogen flows, it absorbs heat from the pipe wall and warms up, making it progressively less effective at cooling the pipe further downstream. This creates the characteristic temperature gradient seen in the chart.
 
@@ -34,7 +39,7 @@ const ExplanationPanel: React.FC<ExplanationPanelProps> = ({ results, theme }) =
 
       Key Simulation Results:
       - Total Cooldown Time: ${results.totalTimeHours.toFixed(2)} hours
-      - Total Nitrogen Consumed: ${results.totalN2Nm3.toFixed(0)} Nm³
+      - Total Nitrogen Consumed (for cooldown portion): ${results.n2ForCooldownNm3.toFixed(0)} Nm³
       - Final Inlet Temperature: ${results.temperatureProfile[0]?.temperature.toFixed(1)} °C
       - Final Outlet Temperature: ${results.temperatureProfile[results.temperatureProfile.length - 1]?.temperature.toFixed(1)} °C
       - Peak Cooldown Rate (at outlet): ${results.peakCooldownRate.toFixed(1)} °C/hr

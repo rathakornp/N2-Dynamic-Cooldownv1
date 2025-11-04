@@ -1,9 +1,9 @@
 import React from 'react';
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-    <div>
+    <div className="print-block">
         <h4 className="text-md font-medium text-gray-800 dark:text-slate-200 mb-2">{title}</h4>
-        <div className="bg-gray-50 dark:bg-slate-800/50 p-4 rounded-lg shadow-inner space-y-3">
+        <div className="bg-white dark:bg-slate-800/50 p-4 rounded-lg shadow-inner space-y-3">
             {children}
         </div>
     </div>
@@ -18,11 +18,11 @@ const Equation: React.FC<{ formula: React.ReactNode; description: string }> = ({
 
 const ReferenceEquationsPanel: React.FC = () => {
     return (
-        <div className="space-y-8 mt-8">
+        <div className="space-y-8 mt-8 print-block print-page-break">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 border-b border-gray-200 dark:border-slate-700 pb-4">
                 Reference Equations & Models
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 gap-x-8">
                 <Section title="Fluid Dynamics & Pressure Drop">
                      <Equation 
                         formula={<>Re = (ρ * v * D) / μ</>}

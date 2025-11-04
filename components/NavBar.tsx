@@ -1,8 +1,10 @@
 import React from 'react';
 
+type Page = 'simulation' | 'details' | 'lng' | 'features' | 'guide' | 'contingency';
+
 interface NavBarProps {
-  currentPage: 'simulation' | 'details' | 'features' | 'guide' | 'contingency';
-  setCurrentPage: (page: 'simulation' | 'details' | 'features' | 'guide' | 'contingency') => void;
+  currentPage: Page;
+  setCurrentPage: (page: Page) => void;
   hasResults: boolean;
 }
 
@@ -36,7 +38,7 @@ const NavBar: React.FC<NavBarProps> = ({ currentPage, setCurrentPage, hasResults
     <nav className="bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700">
       <div className="container mx-auto px-4 md:px-8 flex space-x-4">
         <NavLink 
-          label="Simulation"
+          label="N₂ Cooldown"
           isActive={currentPage === 'simulation'}
           isDisabled={false}
           onClick={() => setCurrentPage('simulation')}
@@ -46,6 +48,12 @@ const NavBar: React.FC<NavBarProps> = ({ currentPage, setCurrentPage, hasResults
           isActive={currentPage === 'details'}
           isDisabled={!hasResults}
           onClick={() => { if(hasResults) setCurrentPage('details')}}
+        />
+        <NavLink 
+          label="LNG Introduction"
+          isActive={currentPage === 'lng'}
+          isDisabled={!hasResults}
+          onClick={() => { if(hasResults) setCurrentPage('lng')}}
         />
         <NavLink 
           label="Operating Guide"

@@ -2,56 +2,13 @@ import React from 'react';
 
 interface PrintButtonProps {
   disabled: boolean;
+  onClick: () => void;
 }
 
-const PrintButton: React.FC<PrintButtonProps> = ({ disabled }) => {
-
-  const handlePrint = () => {
-    const printContents = document.getElementById('print-report-container')?.innerHTML;
-    if (!printContents) {
-        console.error("Print container not found.");
-        return;
-    }
-    
-    // Gather all styles from the main document's head to apply to the new window
-    const styles = Array.from(document.head.querySelectorAll('style, link[rel="stylesheet"]'))
-        .map(el => el.outerHTML)
-        .join('\n');
-
-    // Get the tailwind script, since it's critical for layout
-    const tailwindScript = document.head.querySelector('script[src="https://cdn.tailwindcss.com"]')?.outerHTML || '';
-    
-    const printWindow = window.open('', '_blank', 'height=800,width=1000');
-    
-    if (printWindow) {
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html class="light" style="background-color: #ffffff;">
-              <head>
-                <title>N₂ Pipeline Cooldown Simulation Report</title>
-                ${tailwindScript}
-                ${styles}
-              </head>
-              <body class="bg-white">
-                ${printContents}
-              </body>
-            </html>
-        `);
-        printWindow.document.close();
-        printWindow.focus();
-        
-        // Use a timeout to allow the browser to render the content, especially charts, before printing
-        setTimeout(() => {
-            printWindow.print();
-            printWindow.close();
-        }, 1000); // 1 second delay is a pragmatic solution for chart rendering race conditions
-    }
-  };
-
-
+const PrintButton: React.FC<PrintButtonProps> = ({ disabled, onClick }) => {
   return (
     <button
-      onClick={handlePrint}
+      onClick={onClick}
       disabled={disabled}
       className="flex items-center gap-2 bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400 dark:disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors duration-200"
       aria-label="Print Report"

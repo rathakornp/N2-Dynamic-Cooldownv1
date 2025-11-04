@@ -1,27 +1,24 @@
 import React from 'react';
 
-const FeatureOverviewPage: React.FC = () => {
-  
-  const Section: React.FC<{ title: string, children: React.ReactNode }> = ({ title, children }) => (
-    <section className="space-y-4">
-      <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 border-b border-gray-300 dark:border-slate-600 pb-2">
-        {title}
-      </h2>
-      <div className="prose prose-slate dark:prose-invert max-w-none">
-        {children}
-      </div>
-    </section>
-  );
-
-  const SubSection: React.FC<{ title: string, children: React.ReactNode }> = ({ title, children }) => (
-    <div className="mt-6">
-        <h3 className="text-xl font-semibold text-gray-700 dark:text-slate-200">
+const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <section className="space-y-4 print-block">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 border-b border-gray-300 dark:border-slate-600 pb-2">
             {title}
-        </h3>
-        {children}
-    </div>
-  );
+        </h2>
+        <div className="prose prose-slate dark:prose-invert max-w-none text-gray-600 dark:text-slate-300">
+            {children}
+        </div>
+    </section>
+);
 
+const FeatureItem: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <div className="mt-4 p-4 bg-indigo-50 dark:bg-slate-800/50 rounded-lg border-l-4 border-indigo-400 dark:border-indigo-500">
+        <h4 className="font-semibold text-gray-800 dark:text-slate-100">{title}</h4>
+        <div className="text-sm mt-1">{children}</div>
+    </div>
+);
+
+const FeatureOverviewPage: React.FC = () => {
   return (
     <div 
       className="bg-white dark:bg-slate-800 rounded-lg shadow-lg mx-auto"
@@ -30,83 +27,84 @@ const FeatureOverviewPage: React.FC = () => {
       <div className="p-12 space-y-12">
         <div className="text-center border-b border-gray-300 dark:border-slate-600 pb-6">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">
-                N₂ Pipeline Cooldown Calculator
+                Model Features & Validity
             </h1>
             <p className="mt-2 text-lg text-gray-600 dark:text-slate-300">
-                Feature Overview & Validity Statement
+                Understanding the underlying physics and assumptions of the simulation.
             </p>
         </div>
 
-        <p className="text-lg text-gray-700 dark:text-slate-200">
-            This tool is a specialized, rate-controlled simulator for planning and analyzing the cooldown of industrial pipelines using gaseous nitrogen. It is built on a robust transient energy balance model.
-        </p>
-
-        <Section title="I. Core Simulation Engine">
-            <p>The heart of the calculator is a <strong>1D transient heat transfer and fluid dynamics model</strong>. It discretizes the pipeline into 50 distinct segments and solves the energy balance for each segment over small time steps.</p>
-            <ul>
-                <li><strong>Transient Thermal Analysis:</strong> The model calculates how temperatures change over time, not just a final steady state. This is crucial for understanding the entire cooldown process.</li>
-                <li><strong>Comprehensive Heat Transfer Model:</strong> It accounts for all primary modes of heat transfer: internal convection (Dittus-Boelter correlation), conduction through the pipe and insulation, and external convection and radiation (Stefan-Boltzmann law).</li>
-                <li><strong>Fluid Dynamics & Pressure Drop:</strong> It models the required pipeline <strong>inlet pressure (bara)</strong> by calculating the pressure drop along the entire pipe length using the Haaland and Darcy-Weisbach equations.</li>
-                <li><strong>Temperature-Dependent Properties:</strong> The simulation is highly realistic as it dynamically recalculates the physical properties of both the steel (SS304) and the nitrogen gas (density, viscosity, specific heat) as their temperatures change.</li>
-                <li><strong>Stall Condition Detection:</strong> The calculator intelligently monitors the energy balance at the pipe outlet and will stop the simulation if it detects a "stall condition" where cooling power is less than heat ingress.</li>
-            </ul>
+        <Section title="Core Simulation Model">
+            <p>
+                The calculator is built on a <strong>1D transient heat transfer model</strong>. The pipeline is discretized into a user-defined number of segments (currently 50) along its length. For each time step, a full energy balance is performed on every segment, accounting for all modes of heat transfer.
+            </p>
+            <FeatureItem title="1D Discretization">
+                <p>The model simulates temperature changes along the length of the pipe (the 'x' axis) over time. It assumes uniform temperature around the circumference of any given cross-section. This is a standard and valid approach for long, insulated pipelines where longitudinal heat transfer dominates.</p>
+            </FeatureItem>
+            <FeatureItem title="Transient Analysis">
+                <p>Unlike a steady-state model, this is a dynamic simulation. It calculates how the temperature profile evolves over time, step-by-step, providing a realistic view of the entire cooldown process from start to finish.</p>
+            </FeatureItem>
+             <FeatureItem title="Mixing Zone Model">
+                <p>To accurately simulate the initial phase, the model incorporates a "mixing zone" or "thermal front." It recognizes that the incoming cold N₂ doesn't instantly displace the warm resident gas. Instead, it simulates a moving front of a defined length where mixing occurs, ensuring a smooth and physically realistic temperature transition as the cooldown begins.</p>
+            </FeatureItem>
         </Section>
-
-        <Section title="II. Key User-Configurable Inputs">
-            <p>The tool provides extensive control over the simulation parameters, allowing for detailed "what-if" analysis.</p>
-             <ul>
-                <li><strong>Pipeline Geometry:</strong> Define the exact physical dimensions of the pipe, including Length, Outer Diameter, Wall Thickness, and internal roughness.</li>
-                <li><strong>Process Conditions:</strong> Set the key thermal parameters, including the pipe's Initial Temperature, the final Target Temperature, and the Ambient Temperature.</li>
-                <li><strong>Multi-Stage N₂ Flow Profile:</strong> Define a sophisticated, multi-stage linear ramp with Initial, Intermediate, and Max N₂ Flow rates, and Intermediate and End Ramp Times.</li>
-                <li><strong>N₂ Inlet Temperature Ramp:</strong> Simulate a vaporizer's performance by defining a linear ramp-down of the N₂ inlet temperature.</li>
-                <li><strong>Heat Transfer Properties:</strong> Control the Insulation Thickness, Insulation k-value, External Convection Coefficient, and Surface Emissivity.</li>
-                <li><strong>Safety & Operational Constraints:</strong> The most critical input is the <strong>Cooldown Rate Limit (°C/hr)</strong>, which enforces the maximum allowable thermal shock on the pipeline.</li>
-                <li><strong>Full Scope N₂ Service Planning:</strong> Model the entire N₂ service from start to finish. This includes inputs for initial <strong>Purge Volumes</strong>, planned operational <strong>Hold Periods</strong> (number and duration), long-term <strong>Preservation</strong> needs (duration and leak rate), and a final <strong>Operational Margin (%)</strong> to ensure a robust plan.</li>
-            </ul>
-        </Section>
-
-        <Section title="III. Comprehensive Simulation Outputs & Visualizations">
-            <p>The results are presented in a clear, multi-faceted format designed for engineers.</p>
-            <ul>
-                <li><strong>Key Performance Indicators (KPIs):</strong> The "Overview Summary" provides a complete, auditable breakdown of nitrogen consumption for each phase (Purge, Cooldown, Holds, Preservation), a Sub-Total, the applied Operational Margin, and a final Grand Total for planning. It also includes total cooldown time and a critical, color-coded Peak Cooldown Rate.</li>
-                <li><strong>Detailed Charts:</strong> A suite of interactive charts visualizes the entire process, including a unique Dynamic Temperature Profile, time-series plots for key parameters, and accumulated energy charts.</li>
-                <li><strong>Detailed Calculation Outputs:</strong> A separate page provides a full breakdown of calculated physical and thermal properties.</li>
-            </ul>
-        </Section>
-
-        <Section title="IV. User Interface & Reporting Features">
-             <ul>
-                <li><strong>Multi-Page Layout:</strong> A clean interface separates the main Simulation Results from Detailed Calculation Outputs and this Features overview.</li>
-                <li><strong>Real-time Input Validation:</strong> The input form provides immediate feedback to prevent erroneous calculations.</li>
-                <li><strong>Light & Dark Mode:</strong> A theme toggle for user comfort.</li>
-                <li><strong>Professional PDF Report Generation:</strong> A "Print Report" function generates a clean, multi-page, A4-formatted report combining all results into a single professional document.</li>
-            </ul>
-        </Section>
-
-        <Section title="V. Validity for Use & Engineering Considerations">
-            <SubSection title="Intended Use">
-                 <ul>
-                    <li><strong>Feasibility Studies:</strong> Estimating cooldown times and nitrogen consumption for new projects.</li>
-                    <li><strong>Procedural Optimization:</strong> Running "what-if" scenarios to find the optimal N₂ flow profile.</li>
-                    <li><strong>Sensitivity Analysis:</strong> Understanding how changes in ambient temperature, insulation, or vaporizer capacity will impact the cooldown process.</li>
-                    <li><strong>Training & Visualization:</strong> Helping engineers and operators visualize the complex thermal dynamics of a pipeline cooldown.</li>
-                </ul>
-            </SubSection>
-            <SubSection title="Assumptions & Limitations">
-                 <ul>
-                    <li>The model is <strong>one-dimensional (1D)</strong>, assuming uniform temperature around the pipe's circumference.</li>
-                    <li>The model assumes a straight pipeline and does not account for additional pressure drops from bends, valves, or elevation changes.</li>
-                    <li>The nitrogen is modeled as an <strong>ideal gas</strong>, a valid assumption for these low-pressure conditions.</li>
-                    <li>The simulation does not model phase changes (e.g., condensation of residual moisture).</li>
-                </ul>
-            </SubSection>
-            <div className="mt-6 p-4 bg-amber-100 dark:bg-amber-900/40 border-l-4 border-amber-500 rounded-r-lg">
-                <p className="font-bold text-amber-800 dark:text-amber-200">Crucial Validity Statement</p>
-                <p className="mt-2 text-amber-700 dark:text-amber-300">
-                    This calculator is an <strong>engineering simulation tool</strong> and is intended for guidance and preliminary design purposes. The results are based on established theoretical models and physical constants. However, it is <strong>not a substitute for detailed engineering design, formal safety reviews (e.g., HAZOP), or real-world operational validation.</strong> All procedures derived from this tool should be thoroughly reviewed and approved by qualified personnel before implementation.
-                </p>
+        
+        <Section title="Engineering Justification & Model Validity">
+            <p>
+                This model is designed as a high-fidelity engineering tool based on fundamental principles of thermodynamics, fluid dynamics, and heat transfer. The equations used are standard, universally accepted correlations used in process and mechanical engineering for pipeline thermal analysis.
+            </p>
+            <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/40 rounded-lg border border-green-200 dark:border-green-800">
+                 <h4 className="font-semibold text-green-800 dark:text-green-300">Validity Statement</h4>
+                 <p className="text-sm mt-1">
+                    The results generated by this calculator are considered a valid and reliable engineering estimate suitable for <strong>procedural planning, logistics (N₂ volume calculation), scheduling, and safety reviews</strong>. It provides a robust basis for developing operational plans. However, it is not a substitute for detailed Computational Fluid Dynamics (CFD) analysis, which would be required for highly complex geometries or to analyze 3D flow phenomena. The model's validity is contingent on the accuracy of the user inputs and an understanding of its stated limitations.
+                 </p>
             </div>
         </Section>
+
+        <Section title="Heat Transfer Physics">
+             <p>The model incorporates a comprehensive set of heat transfer mechanisms to accurately predict the pipeline's thermal behavior.</p>
+             <FeatureItem title="Internal Convection (N₂ to Pipe Wall)">
+                <p>Heat removal from the pipe is governed by forced convection. The model calculates the internal heat transfer coefficient using the <strong>Dittus-Boelter correlation</strong>, which is a function of the fluid's Reynolds and Prandtl numbers. This means the cooling effectiveness correctly changes with N₂ flow rate, temperature, and pressure.</p>
+             </FeatureItem>
+             <FeatureItem title="Conduction (Through Pipe Wall & Insulation)">
+                 <p>Heat transfer through the solid materials is modeled using Fourier's law for conduction through cylindrical layers. The model accounts for the thermal resistance of both the SS304 pipe wall and the multi-layer insulation.</p>
+             </FeatureItem>
+             <FeatureItem title="External Heat Ingress (Environment to Pipe)">
+                 <p>The total heat leaking into the system from the environment is the sum of two mechanisms:</p>
+                 <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li><strong>External Convection:</strong> Heat transfer from the ambient air, based on a user-defined convection coefficient that accounts for wind effects.</li>
+                    <li><strong>External Radiation:</strong> Heat transfer from the surroundings, calculated using the <strong>Stefan-Boltzmann law</strong>. This accounts for the surface emissivity and the absolute temperatures of the insulation surface and the environment.</li>
+                 </ul>
+                 <p className="mt-2">The model iteratively calculates the outer insulation surface temperature to accurately balance the internal conduction with the external convection and radiation.</p>
+             </FeatureItem>
+        </Section>
+
+        <Section title="Fluid Dynamics & Material Properties">
+            <p>The simulation uses temperature-dependent properties for both the nitrogen gas and the pipeline material to ensure accuracy across the wide operating temperature range.</p>
+             <FeatureItem title="Pressure Drop Calculation">
+                <p>The required N₂ inlet pressure is calculated by working backward from the atmospheric vent pressure at the outlet. It uses the <strong>Darcy-Weisbach equation</strong> with the <strong>Haaland equation</strong> for the friction factor. This accounts for frictional losses based on N₂ velocity, density, viscosity, and the pipe's internal roughness.</p>
+             </FeatureItem>
+             <FeatureItem title="Temperature-Dependent Properties">
+                 <ul className="list-disc list-inside mt-2 space-y-1">
+                     <li><strong>N₂ Gas:</strong> Density is calculated using the Ideal Gas Law. Viscosity is calculated using Sutherland's Law. Specific heat (Cp) and thermal conductivity are also functions of temperature.</li>
+                     <li><strong>SS304 Pipe:</strong> The specific heat (Cp) of SS304 changes significantly with temperature, especially at cryogenic levels. The model uses an empirical correlation to update this value in each segment at every time step, ensuring the pipe's thermal mass is calculated correctly.</li>
+                 </ul>
+             </FeatureItem>
+        </Section>
+        
+        <Section title="Model Assumptions & Critical Limitations">
+            <p>Every simulation has boundaries. It's crucial to understand the assumptions made by this model to apply a suitable operational margin.</p>
+            <ul className="list-disc list-inside mt-2 space-y-2">
+                <li><strong>CRITICAL - Dry Pipeline:</strong> <strong>The model assumes the pipeline is free of any liquid water, ice, or hydrocarbons.</strong> The presence of these would introduce a significant latent heat load not accounted for, requiring much more N₂. This is the most important real-world factor to consider when planning.</li>
+                <li><strong>Single-Phase Gas:</strong> The simulation models gaseous nitrogen (GN₂) only. It does not model two-phase flow that would occur with liquid nitrogen (LIN) injection.</li>
+                <li><strong>Simplified Geometry:</strong> The model treats the pipeline as a simple, uniform cylinder. It does not account for the additional thermal mass and complex heat transfer around flanges, valves, or pipe supports. This is a key justification for using a robust operational margin.</li>
+                <li><strong>Uniform Insulation:</strong> The model assumes the insulation k-value and thickness are constant along the entire pipe length. Any gaps or damage to the insulation would increase heat ingress.</li>
+                <li><strong>1D Flow:</strong> The model does not account for complex 3D flow patterns, such as stratification or swirling, or temperature variations around the pipe's circumference.</li>
+                <li><strong>No Elevation Change:</strong> Gravitational effects on pressure are not included. The model assumes a horizontal pipeline.</li>
+                <li><strong>Ideal Gas Behavior:</strong> Nitrogen is modeled as an ideal gas. This is a highly accurate assumption for the pressures and temperatures involved in this process.</li>
+            </ul>
+        </Section>
+
       </div>
     </div>
   );

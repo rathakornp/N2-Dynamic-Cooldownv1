@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { CalculationInputs, CalculationResults } from './types.ts';
+import { CalculationInputs, CalculationResults, LngIntroductionResults } from './types.ts';
 import { runCooldownSimulation } from './services/calculationService.ts';
 import InputPanel from './components/InputPanel.tsx';
 import ResultsPanel from './components/ResultsPanel.tsx';
@@ -8,10 +8,11 @@ import ThemeToggle from './components/ThemeToggle.tsx';
 import NavBar from './components/NavBar.tsx';
 import DetailedResultsPage from './pages/DetailedResultsPage.tsx';
 import PrintButton from './components/PrintButton.tsx';
-import PrintReport from './components/PrintReport.tsx';
 import FeatureOverviewPage from './pages/FeatureOverviewPage.tsx';
 import OperatingGuidePage from './pages/OperatingGuidePage.tsx';
 import ContingencyGuidePage from './pages/ContingencyGuidePage.tsx';
+import LngIntroductionPage from './pages/LngIntroductionPage.tsx';
+import PrintPreviewModal from './components/PrintPreviewModal.tsx';
 
 // Fix: Create a new type to represent form state, allowing empty strings for inputs.
 type FormInputs = { [K in keyof CalculationInputs]: CalculationInputs[K] | '' };
@@ -20,12 +21,13 @@ const validateInputs = (currentInputs: FormInputs): Record<string, string> => {
     const newErrors: Record<string, string> = {};
     
     // Check for non-numeric or empty
-    for (const key in currentInputs) {
-        // Fix: The type of currentInputs now correctly reflects that values can be `''`, so this comparison is valid.
-        if (currentInputs[key as keyof CalculationInputs] === '' || isNaN(Number(currentInputs[key as keyof CalculationInputs]))) {
+    // Fix: Replaced for...in loop with Object.keys to ensure type safety for keys.
+    (Object.keys(currentInputs) as Array<keyof CalculationInputs>).forEach(key => {
+        if (currentInputs[key] === '' || isNaN(Number(currentInputs[key]))) {
             newErrors[key] = 'Must be a valid number.';
         }
-    }
+    });
+    
     // Don't run further checks if basic type is wrong for any field
     if (Object.keys(newErrors).length > 0) return newErrors;
 
@@ -33,7 +35,7 @@ const validateInputs = (currentInputs: FormInputs): Record<string, string> => {
     const inputsAsNumbers = currentInputs as CalculationInputs;
 
     // Positive value checks
-    const positiveChecks: (keyof CalculationInputs)[] = ['pipeLength', 'pipeOD', 'pipeWT', 'cooldownRateLimit', 'insulationThickness', 'insulationKValue', 'initialN2Flow', 'timeStepS', 'totalRampTimeHours', 'intermediateRampTimeHours'];
+    const positiveChecks: (keyof CalculationInputs)[] = ['pipeLength', 'pipeOD', 'pipeWT', 'cooldownRateLimit', 'insulationThickness', 'insulationKValue', 'initialN2Flow', 'timeStepS', 'flowRampTotalTimeHours', 'flowRampIntermediateTimeHours', 'n2TempStepSizeC', 'n2TempHoldDurationHours'];
     positiveChecks.forEach(key => {
         if (inputsAsNumbers[key] <= 0) {
             newErrors[key] = 'Must be greater than 0.';
@@ -69,8 +71,8 @@ const validateInputs = (currentInputs: FormInputs): Record<string, string> => {
     if (inputsAsNumbers.initialN2Flow > inputsAsNumbers.maxN2Flow) {
         newErrors.initialN2Flow = 'Must be less than or equal to Max N₂ Flow.';
     }
-    if (inputsAsNumbers.intermediateRampTimeHours >= inputsAsNumbers.totalRampTimeHours) {
-        newErrors.intermediateRampTimeHours = 'Must be less than Total Ramp Time.';
+    if (inputsAsNumbers.flowRampIntermediateTimeHours >= inputsAsNumbers.flowRampTotalTimeHours) {
+        newErrors.flowRampIntermediateTimeHours = 'Must be less than Total Ramp Time.';
     }
     if (inputsAsNumbers.intermediateN2Flow < inputsAsNumbers.initialN2Flow) {
         newErrors.intermediateN2Flow = 'Must be >= Initial Flow.';
@@ -94,16 +96,20 @@ const getInitialTheme = (): 'light' | 'dark' => {
   return 'light';
 };
 
+type Page = 'simulation' | 'details' | 'lng' | 'features' | 'guide' | 'contingency';
+export type PrintMode = 'full' | 'lng-only';
 
 function App() {
   // Fix: Use the `FormInputs` type for the state to correctly handle empty input fields.
   const [inputs, setInputs] = useState<FormInputs>(initialInputs);
   const [results, setResults] = useState<CalculationResults | null>(null);
+  const [lngResults, setLngResults] = useState<LngIntroductionResults | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState(getInitialTheme);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [page, setPage] = useState<'simulation' | 'details' | 'features' | 'guide' | 'contingency'>('simulation');
+  const [page, setPage] = useState<Page>('simulation');
+  const [printPreviewMode, setPrintPreviewMode] = useState<PrintMode | null>(null);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -133,6 +139,7 @@ function App() {
     setIsLoading(true);
     setError(null);
     setResults(null);
+    setLngResults(null); // Reset LNG results on new cooldown calculation
     setPage('simulation'); // Reset to the main page on new calculation
     
     // Use setTimeout to allow the UI to update to the loading state
@@ -160,9 +167,58 @@ function App() {
     }, 50); // a short delay
   }, [inputs, errors]);
 
+  const renderPage = () => {
+    switch (page) {
+      case 'simulation':
+        return (
+          <div className="flex flex-col lg:flex-row gap-8 items-start">
+            <div className="w-full lg:w-[420px] lg:flex-shrink-0">
+              <InputPanel 
+                inputs={inputs} 
+                onInputChange={handleInputChange} 
+                onCalculate={handleCalculate}
+                isLoading={isLoading}
+                errors={errors}
+              />
+            </div>
+            <div className="flex-grow w-full">
+              <div 
+                className="bg-white dark:bg-slate-800 rounded-lg shadow-lg mx-auto"
+              >
+                <ResultsPanel 
+                  results={results} 
+                  isLoading={isLoading} 
+                  error={error} 
+                  theme={theme}
+                />
+              </div>
+            </div>
+          </div>
+        );
+      case 'details':
+        return results && <DetailedResultsPage results={results} />;
+      case 'lng':
+        return results && <LngIntroductionPage 
+          cooldownResults={results} 
+          theme={theme} 
+          lngResults={lngResults} 
+          setLngResults={setLngResults} 
+          onShowPrintPreview={setPrintPreviewMode}
+        />;
+      case 'features':
+        return <FeatureOverviewPage />;
+      case 'guide':
+        return <OperatingGuidePage />;
+      case 'contingency':
+        return <ContingencyGuidePage />;
+      default:
+        return null;
+    }
+  };
+
+
   return (
     <div className="min-h-screen font-sans">
-      <div className="screen-only">
         <header className="bg-white dark:bg-slate-800 shadow-md dark:shadow-slate-700/50 sticky top-0 z-10 no-print">
           <div className="container mx-auto px-4 py-4 md:px-8 flex justify-between items-center">
             <div>
@@ -175,6 +231,7 @@ function App() {
             </div>
             <div className="flex items-center gap-2">
                 <PrintButton 
+                  onClick={() => setPrintPreviewMode('full')}
                   disabled={!results}
                 />
                 <ThemeToggle theme={theme} setTheme={setTheme} />
@@ -187,56 +244,21 @@ function App() {
           />
         </header>
 
-        <main className="container mx-auto p-4 md:p-8">
-          {page === 'simulation' && (
-              <div className="flex flex-col lg:flex-row gap-8 items-start">
-                  <div className="w-full lg:w-[420px] lg:flex-shrink-0">
-                      <InputPanel 
-                      inputs={inputs} 
-                      onInputChange={handleInputChange} 
-                      onCalculate={handleCalculate}
-                      isLoading={isLoading}
-                      errors={errors}
-                      />
-                  </div>
-                  <div className="flex-grow w-full">
-                     <div 
-                      className="bg-white dark:bg-slate-800 rounded-lg shadow-lg mx-auto"
-                      style={{ width: '210mm' }}
-                    >
-                      <ResultsPanel 
-                        results={results} 
-                        isLoading={isLoading} 
-                        error={error} 
-                        theme={theme}
-                      />
-                    </div>
-                  </div>
-              </div>
-          )}
-          {page === 'details' && results && (
-              <DetailedResultsPage results={results} />
-          )}
-          {page === 'features' && (
-              <FeatureOverviewPage />
-          )}
-           {page === 'guide' && (
-              <OperatingGuidePage />
-          )}
-          {page === 'contingency' && (
-              <ContingencyGuidePage />
-          )}
+        <main className="container mx-auto p-4 md:p-8 no-print">
+          {renderPage()}
         </main>
 
         <footer className="text-center py-4 mt-8 text-gray-500 dark:text-slate-400 text-sm no-print">
           <p>&copy; {new Date().getFullYear()} Thai Nippon Steel Engineering and Construction Company Limited. All rights reserved.</p>
         </footer>
-      </div>
 
-      {results && (
-        <div id="print-report-container" className="print-only">
-          <PrintReport results={results} />
-        </div>
+      {printPreviewMode && results && (
+        <PrintPreviewModal
+          mode={printPreviewMode}
+          results={results}
+          lngResults={lngResults}
+          onClose={() => setPrintPreviewMode(null)}
+        />
       )}
     </div>
   );

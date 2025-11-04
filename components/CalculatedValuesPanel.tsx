@@ -27,9 +27,9 @@ const MetricItem: React.FC<{ label: string; value: string; unit: string }> = ({ 
 const CalculatedValuesPanel: React.FC<CalculatedValuesPanelProps> = ({ results }) => {
     return (
         <div className="space-y-6">
-            <div>
+            <div className="print-block">
                 <h4 className="text-md font-medium text-gray-800 dark:text-slate-200 mb-2">Pipeline Physical Properties</h4>
-                <dl className="bg-gray-50 dark:bg-slate-800/50 p-4 rounded-lg shadow-inner">
+                <dl className="bg-white dark:bg-slate-800/50 p-4 rounded-lg shadow-inner">
                     <MetricItem label="Total Pipe Mass" value={formatNumber(results.pipeMass, 1)} unit="kg" />
                     <MetricItem label="Pipe Outer Surface Area" value={formatNumber(results.pipeSurfaceArea, 1)} unit="m²" />
                     <MetricItem label="Pipeline Internal Volume" value={formatNumber(results.pipeVolume, 3)} unit="m³" />
@@ -39,9 +39,9 @@ const CalculatedValuesPanel: React.FC<CalculatedValuesPanelProps> = ({ results }
                     <MetricItem label="Pipe Outer Radius" value={formatNumber(results.pipeOuterRadius, 1)} unit="mm" />
                 </dl>
             </div>
-            <div>
+            <div className="print-block">
                 <h4 className="text-md font-medium text-gray-800 dark:text-slate-200 mb-2">Thermal Properties</h4>
-                <dl className="bg-gray-50 dark:bg-slate-800/50 p-4 rounded-lg shadow-inner">
+                <dl className="bg-white dark:bg-slate-800/50 p-4 rounded-lg shadow-inner">
                     <MetricItem label="Initial Pipe Specific Heat (Cp)" value={formatNumber(results.initialCp_SS304, 1)} unit="J/kg·K" />
                     <MetricItem label="Final Pipe Specific Heat (Cp)" value={formatNumber(results.finalCp_SS304, 1)} unit="J/kg·K" />
                     <MetricItem label="Pipe Wall Thermal Resistance" value={formatNumber(results.R_pipe, 3)} unit="K/W" />

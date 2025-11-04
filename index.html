@@ -1,86 +1,81 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
+<html lang="en" class="dark"> <!-- Defaulting to dark theme as an example, React will take over -->
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>N2 Pipeline Cooldown Calculator</title>
+
+    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class', // Enable class-based dark mode
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+          },
+        },
+      }
+    </script>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    
+    <!-- Import Map for JS modules -->
     <script type="importmap">
 {
   "imports": {
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "recharts": "https://aistudiocdn.com/recharts@^3.3.0",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "recharts": "https://aistudiocdn.com/recharts@^3.3.0",
+    "jspdf": "https://aistudiocdn.com/jspdf@^3.0.3",
+    "html2canvas": "https://aistudiocdn.com/html2canvas@^1.4.1",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0"
   }
 }
 </script>
-    <script>
-      // On page load or when changing themes, best to add inline in `head` to avoid FOUC
-      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark')
-      } else {
-        document.documentElement.classList.remove('dark')
-      }
-    </script>
+
+    <!-- Global Styles and Print-specific rules -->
     <style>
-      @media screen {
-        .print-only {
-          /* Position off-screen so chart components can render with a valid width */
-          position: absolute;
-          left: -9999px;
-          top: auto;
-          width: 210mm; 
-        }
+      body {
+        font-family: 'Inter', sans-serif;
       }
-      @media print {
-        @page {
-          size: A4;
-          margin: 1.5cm;
-        }
-
-        body {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-        
-        .screen-only {
-          display: none !important;
-        }
-
-        .print-only {
-            display: block !important;
-            position: static !important;
-            width: auto !important;
-        }
-       
-        .no-print {
-          display: none !important;
-        }
-        
-        html, body {
-          background-color: #ffffff !important;
-          color: #000000 !important;
-        }
-        
-        * {
-          box-shadow: none !important;
-          text-shadow: none !important;
-        }
-        
-        h1, h2, h3, h4, h5, h6 {
-          page-break-after: avoid;
-        }
-        
-        div, section, fieldset, dl {
-          page-break-inside: avoid;
-        }
+      /* Custom scrollbar for webkit browsers */
+      ::-webkit-scrollbar {
+        width: 12px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f5f9; /* slate-100 */
+      }
+      .dark ::-webkit-scrollbar-track {
+        background: #1e293b; /* slate-800 */
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #94a3b8; /* slate-400 */
+        border-radius: 6px;
+        border: 3px solid transparent;
+        background-clip: content-box;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #475569; /* slate-600 */
+      }
+      
+      /* Print-specific styles for jsPDF auto-paging from HTML */
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      .print-block {
+        break-inside: avoid;
+      }
+      .print-page-break {
+        break-before: page;
       }
     </style>
 </head>
-  <body class="bg-gray-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300">
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 transition-colors duration-300">
     <div id="root"></div>
-    <script type="module" src="./index.js"></script>
-  </body>
+    <script type="module" src="/index.tsx"></script>
+</body>
 </html>
